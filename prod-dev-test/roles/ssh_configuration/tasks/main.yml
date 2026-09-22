@@ -1,0 +1,12 @@
+---
+# Create users and grouop
+- name: Configure users
+  ansible.builtin.include_tasks: users.yml
+
+# Configure SSH daemon
+- name: Configure SSH
+  ansible.builtin.include_tasks: sshd.yml
+
+# Configure SSH logging
+- name: Configure rsyslog
+  ansible.builtin.include_tasks: rsyslog.yml

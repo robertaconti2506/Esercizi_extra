@@ -1,0 +1,37 @@
+# Disable password authentication
+PasswordAuthentication no
+
+# Allow public key authentication
+PubkeyAuthentication yes
+
+# Do not allow empty passwords
+PermitEmptyPasswords no
+
+# Limit authentication attempts
+MaxAuthTries {{ ssh_max_auth_tries }}
+
+{% if 'dev' in group_names %}
+# Allow development user and root
+AllowUsers {{ ssh_dev_user }} root
+PermitRootLogin yes
+
+{% elif 'test' in group_names %}
+# Allow test user and root
+AllowUsers {{ ssh_test_user }} root
+PermitRootLogin yes
+
+{% elif 'prod' in group_names %}
+# Allow only the administrators group
+AllowGroups {{ ssh_prod_group }}
+PermitRootLogin no
+
+# Use a non-standard SSH port
+Port {{ ssh_prod_port }}
+
+# Enable verbose SSH loggin
+LogLevel VERBOSE
+
+# Send SSH logs to LOCAL5
+SyslogFacility LOCAL5
+
+{% endif %}

@@ -1,0 +1,30 @@
+---
+# Create the SSH user required on the development machine
+- name: Create development SSH user
+  ansible.builtin.user:
+    name: "{{ ssh_dev_user }}"
+    state: present
+  when: "'dev' in group_names"
+
+# Create the SSH user required on the test machine
+- name: Create test SSH user
+  ansible.builtin.user:
+    name: "{{ ssh_test_user }}"
+    state: present
+  when: "'test' in group_names"
+
+# Create administrators group on production
+- name: Create administrators group
+  ansible.builtin.group:
+    name: "{{ ssh_prod_group }}"
+    state: present
+  when: "'prod' in group_names"
+
+# Create the production SSH user and add it to administrators
+- name: Create production SSH user
+  ansible.builtin.user:
+    name: "{{ ssh_prod_user }}"
+    groups: "{{ ssh_prod_group }}"
+    append: true 
+    state: present
+  when: "'prod' in group_names"

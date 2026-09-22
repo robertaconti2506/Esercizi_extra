@@ -1,0 +1,14 @@
+# Vagrant
+.vagrant/
+
+# macOS
+.DS_Store
+
+# Ansible
+*.retry
+
+# SSH private keys
+*.pem
+*.key
+id_rsa
+id_ed25519

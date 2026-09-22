@@ -1,0 +1,11 @@
+---
+# Configure SSH logging on production only
+- name: Configure production SSH loggin
+  ansible.builtin.template:
+    src: prod_ssh_rsyslog.conf.j2
+    dest: /etc/rsyslog.d/30-prod-ssh.conf
+    owner: root
+    group: root
+    mode: '0644'
+  when: "'prod' in group_names"
+  notify: Restart rsyslog

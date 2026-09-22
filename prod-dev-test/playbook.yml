@@ -1,0 +1,14 @@
+---
+- name: Configure all machines
+  hosts: all
+  become: true
+
+  pre_tasks:
+    - name: Add Mac public key to vagrant authorized_keys
+      ansible.posix.authorized_key:
+        user: vagrant
+        state: present
+        key: "{{ lookup('file', lookup('env', 'HOME') + '/.ssh/id_ed25519.pub') }}"
+
+  roles:
+    - ssh_configuration

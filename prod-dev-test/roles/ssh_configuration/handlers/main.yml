@@ -1,0 +1,12 @@
+---
+# Restart SSH when configuration changes
+- name: Restart SSH
+  ansible.builtin.service:
+    name: ssh
+    state: restarted
+
+# Restart rsyslog when its configuration changes
+- name: Restart rsyslog
+  ansible.builtin.service:
+    name: rsyslog
+    state: restarted

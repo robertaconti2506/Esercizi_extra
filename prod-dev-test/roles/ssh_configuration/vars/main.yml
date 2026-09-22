@@ -1,0 +1,9 @@
+---
+ssh_max_auth_tries: 2
+
+ssh_dev_user: sviluppatore 
+ssh_test_user: tester
+ssh_prod_user: admin
+ssh_prod_group: administrators
+
+ssh_prod_port: 2222
