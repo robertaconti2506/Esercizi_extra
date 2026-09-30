@@ -1,0 +1,41 @@
+- name: Create Elasticsearch configuration directory
+  ansible.builtin.file:
+    path: "{{ monitoring_elasticsearch_jvm_config_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Create Elasticsearch JVM configuration file
+  ansible.builtin.template:
+    src: jvm.options.j2
+    dest: "{{ monitoring_elasticsearch_jvm_config_dir }}/{{ monitoring_elasticsearch_jvm_config_file }}"
+    mode: '0644'
+
+- name: Create Elasticsearch Docker volume
+  community.docker.docker_volume:
+    name: "{{ monitoring_elasticsearch_volume_name }}"
+    state: present
+
+- name: Start Elasticsearch container
+  community.docker.docker_container:
+    name: "{{ monitoring_elasticsearch_container_name }}"
+    image: "{{ monitoring_elasticsearch_image }}"
+    state: started
+    restart_policy: unless-stopped
+    published_ports:
+      - "{{ monitoring_elasticsearch_port }}:9200"
+    volumes:
+      - "{{ monitoring_elasticsearch_volume_name }}:/usr/share/elasticsearch/data"
+      - "{{ monitoring_elasticsearch_jvm_config_dir }}/{{ monitoring_elasticsearch_jvm_config_file }}:{{ monitoring_elasticsearch_jvm_config_mount }}:ro"
+    env:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+
+- name: Verify Elasticsearch is running
+  community.docker.docker_container_info:
+    name: "{{ monitoring_elasticsearch_container_name }}"
+  register: monitoring_elasticsearch_container
+
+- name: Fail if Elasticsearch is not running
+  ansible.builtin.fail:
+    msg: "Elasticsearch container is not running"
+  when: not monitoring_elasticsearch_container.container.State.Running

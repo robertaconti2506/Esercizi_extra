@@ -1,0 +1,39 @@
+---
+- name: Create Prometheus configuration directory
+  ansible.builtin.file:
+    path: "{{ monitoring_prometheus_config_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Create Prometheus Docker volume
+  community.docker.docker_volume:
+    name: "{{ monitoring_prometheus_volume_name }}"
+    state: present
+
+- name: Create Prometheus configuration file
+  ansible.builtin.template:
+    src: prometheus.yml.j2
+    dest: "{{ monitoring_prometheus_config_dir }}/{{ monitoring_prometheus_config_file }}"
+    mode: '0644'
+
+- name: Start Prometheus container
+  community.docker.docker_container:
+    name: "{{ monitoring_prometheus_container_name }}"
+    image: "{{ monitoring_prometheus_image }}"
+    state: started
+    restart_policy: unless-stopped
+    published_ports:
+      - "{{ monitoring_prometheus_port }}:9090"
+    volumes:
+      - "{{ monitoring_prometheus_volume_name }}:/prometheus"
+      - "{{ monitoring_prometheus_config_dir }}/{{ monitoring_prometheus_config_file }}:/etc/prometheus/prometheus.yml:ro"
+
+- name: Verify Prometheus is running
+  community.docker.docker_container_info:
+    name: "{{ monitoring_prometheus_container_name }}"
+  register: monitoring_prometheus_container
+
+- name: Fail if Prometheus is not running
+  ansible.builtin.fail:
+    msg: "Prometheus container is not running"
+  when: not monitoring_prometheus_container.container.State.Running

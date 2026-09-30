@@ -1,0 +1,66 @@
+
+# Ansible managed
+
+Vagrant.configure('2') do |config|
+  if Vagrant.has_plugin?('vagrant-cachier')
+    config.cache.scope = 'machine'
+  end
+
+  config.vm.define "elasticsearch-host" do |c|
+    # Box definition
+    c.vm.box = "generic/rocky9"
+
+    # Config options
+    c.vm.synced_folder ".", "/vagrant", disabled: true
+    c.ssh.insert_key = true
+    c.vm.hostname = "elasticsearch-host"
+
+    # Network
+    c.vm.network "private_network", ip: "192.168.45.13"
+
+    # Provider options
+    c.vm.provider "virtualbox" do |virtualbox, override|
+      virtualbox.memory = 1024
+      virtualbox.cpus = 2
+      virtualbox.linked_clone = true
+    end
+  end
+  config.vm.define "monitoring-grafana" do |c|
+    # Box definition
+    c.vm.box = "generic/rocky9"
+
+    # Config options
+    c.vm.synced_folder ".", "/vagrant", disabled: true
+    c.ssh.insert_key = true
+    c.vm.hostname = "monitoring-grafana"
+
+    # Network
+    c.vm.network "private_network", ip: "192.168.45.14"
+
+    # Provider options
+    c.vm.provider "virtualbox" do |virtualbox, override|
+      virtualbox.memory = 1024
+      virtualbox.cpus = 2
+      virtualbox.linked_clone = true
+    end
+  end
+  config.vm.define "monitoring-prometheus" do |c|
+    # Box definition
+    c.vm.box = "generic/rocky9"
+
+    # Config options
+    c.vm.synced_folder ".", "/vagrant", disabled: true
+    c.ssh.insert_key = true
+    c.vm.hostname = "monitoring-prometheus"
+
+    # Network
+    c.vm.network "private_network", ip: "192.168.45.15"
+
+    # Provider options
+    c.vm.provider "virtualbox" do |virtualbox, override|
+      virtualbox.memory = 1024
+      virtualbox.cpus = 2
+      virtualbox.linked_clone = true
+    end
+  end
+end

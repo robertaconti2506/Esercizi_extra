@@ -1,0 +1,54 @@
+---
+- name: Update DNF package cache
+  become: true
+  ansible.builtin.dnf:
+    update_cache: true
+
+- name: Install Docker prerequisites
+  become: true
+  ansible.builtin.dnf:
+    name: "{{ docker_prerequisites }}"
+    state: present
+
+- name: Add Docker repository
+  become: true
+  ansible.builtin.get_url:
+    url: "{{ docker_repo_url }}"
+    dest: "{{ docker_repo_dest }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Install Docker packages
+  become: true
+  ansible.builtin.dnf:
+    name: "{{ docker_packages }}"
+    state: present
+
+- name: Enable and start Docker
+  become: true
+  ansible.builtin.service:
+    name: "{{ docker_service_name }}"
+    state: started
+    enabled: true
+
+- name: Add Docker users to docker group
+  become: true
+  ansible.builtin.user:
+    name: "{{ item }}"
+    groups: "{{ docker_group }}"
+    append: true
+  loop: "{{ docker_users }}"
+
+- name: Gather service facts
+  ansible.builtin.service_facts:
+
+- name: Verify Docker is running
+  ansible.builtin.debug:
+    msg: "Docker is running"
+  when: ansible_facts.services[docker_service_name + '.service'].state == 'running'
+
+- name: Fail if Docker is not running
+  ansible.builtin.fail:
+    msg: "Docker is not running"
+  when: ansible_facts.services[docker_service_name + '.service'].state != 'running'

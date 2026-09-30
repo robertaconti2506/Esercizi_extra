@@ -1,0 +1,59 @@
+---
+# Elasticsearch configuration
+monitoring_elasticsearch_container_name: elasticsearch
+monitoring_elasticsearch_image: docker.elastic.co/elasticsearch/elasticsearch:8.19.0
+
+monitoring_elasticsearch_port: 9200
+
+monitoring_elasticsearch_volume_name: elasticsearch-data
+
+monitoring_elasticsearch_heap: 1g
+
+monitoring_elasticsearch_jvm_config_dir: /opt/elasticsearch
+monitoring_elasticsearch_jvm_config_file: jvm.options
+monitoring_elasticsearch_jvm_config_mount: /usr/share/elasticsearch/config/jvm.options.d/jvm.options
+
+
+# Grafana configuration
+monitoring_grafana_container_name: grafana
+monitoring_grafana_image: grafana/grafana:latest
+
+monitoring_grafana_port: 3000
+
+monitoring_grafana_config_dir: /opt/grafana
+
+monitoring_grafana_volume_name: grafana-data
+
+
+# Prometheus configuration
+monitoring_prometheus_container_name: prometheus
+monitoring_prometheus_image: prom/prometheus:latest
+
+monitoring_prometheus_port: 9090
+
+monitoring_prometheus_volume_name: prometheus-data
+
+monitoring_prometheus_config_dir: /opt/prometheus
+monitoring_prometheus_config_file: prometheus.yml
+
+monitoring_prometheus_scrape_interval: 15s
+
+
+# Node Exporter configuration
+monitoring_node_exporter_ports:
+  elasticsearch-host: 9101
+  monitoring-grafana: 9102
+  monitoring-prometheus: 9103
+
+monitoring_node_exporter_version: 1.12.1
+monitoring_node_exporter_architecture: linux-amd64
+
+
+monitoring_node_exporter_download_url: >-
+  {{ "https://github.com/prometheus/node_exporter/releases/download/v"
+  ~ monitoring_node_exporter_version
+  ~ "/node_exporter-"
+  ~ monitoring_node_exporter_version
+  ~ "."
+  ~ monitoring_node_exporter_architecture
+  ~ ".tar.gz" }}

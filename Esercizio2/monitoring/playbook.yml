@@ -1,0 +1,8 @@
+---
+- name: Configure Docker on monitoring hosts
+  hosts: monitoring
+  become: true
+  gather_facts: false
+  roles:
+    - docker
+    - monitoring

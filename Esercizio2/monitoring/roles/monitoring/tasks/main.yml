@@ -1,0 +1,16 @@
+---
+- name: Configure Elasticsearch
+  ansible.builtin.include_tasks: elasticsearch.yml
+  when: inventory_hostname in groups['elasticsearch']
+
+- name: Configure Grafana
+  ansible.builtin.include_tasks: grafana.yml
+  when: inventory_hostname in groups['grafana']
+
+- name: Configure Prometheus
+  ansible.builtin.include_tasks: prometheus.yml
+  when: inventory_hostname in groups['prometheus']
+
+- name: Configure Node Exporter
+  ansible.builtin.include_tasks: node_exporter.yml
+  when: inventory_hostname in groups['monitoring']

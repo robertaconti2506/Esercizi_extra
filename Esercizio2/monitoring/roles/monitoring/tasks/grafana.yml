@@ -1,0 +1,31 @@
+- name: Create Grafana configuration directory
+  ansible.builtin.file:
+    path: "{{ monitoring_grafana_config_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Create Grafana Docker volume
+  community.docker.docker_volume:
+    name: "{{ monitoring_grafana_volume_name }}"
+    state: present
+
+- name: Start Grafana container
+  community.docker.docker_container:
+    name: "{{ monitoring_grafana_container_name }}"
+    image: "{{ monitoring_grafana_image }}"
+    state: started
+    restart_policy: unless-stopped
+    published_ports:
+      - "{{ monitoring_grafana_port }}:3000"
+    volumes:
+      - "{{ monitoring_grafana_volume_name }}:/var/lib/grafana"
+
+- name: Verify Grafana is running
+  community.docker.docker_container_info:
+    name: "{{ monitoring_grafana_container_name }}"
+  register: monitoring_grafana_container
+
+- name: Fail if Grafana is not running
+  ansible.builtin.fail:
+    msg: "Grafana container is not running"
+  when: not monitoring_grafana_container.container.State.Running

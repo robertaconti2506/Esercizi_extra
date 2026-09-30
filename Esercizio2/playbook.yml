@@ -1,0 +1,6 @@
+---
+- name: Import Vagrant playbook
+  ansible.builtin.import_playbook: vagrant/playbook.yml
+
+- name: Import monitoring playbook
+  ansible.builtin.import_playbook: monitoring/playbook.yml

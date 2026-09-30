@@ -1,0 +1,28 @@
+---
+vagrant_provider: virtualbox
+vagrant_box: generic/rocky9
+
+vagrant_memory: 1024
+vagrant_cpus: 2
+
+vms:
+  - name: elasticsearch-host
+    memory: "{{ vagrant_memory }}"
+    cpus: "{{ vagrant_cpus }}"
+    interfaces:
+      - network_name: private_network
+        ip: 192.168.45.13
+      
+  - name: monitoring-grafana
+    memory: "{{ vagrant_memory }}"
+    cpus: "{{ vagrant_cpus }}"
+    interfaces:
+      - network_name: private_network
+        ip: 192.168.45.14
+
+  - name: monitoring-prometheus
+    memory: "{{ vagrant_memory }}"
+    cpus: "{{ vagrant_cpus }}"
+    interfaces:
+      - network_name: private_network
+        ip: 192.168.45.15

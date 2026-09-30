@@ -1,0 +1,20 @@
+---
+docker_prerequisites:
+  - dnf-plugins-core
+  - python3-requests
+
+docker_packages:
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+  - docker-buildx-plugin
+  - docker-compose-plugin
+
+docker_repo_url: "https://download.docker.com/linux/rhel/docker-ce.repo"
+docker_repo_dest: "/etc/yum.repos.d/docker-ce.repo"
+
+docker_service_name: docker
+docker_group: docker
+
+docker_users:
+  - vagrant
