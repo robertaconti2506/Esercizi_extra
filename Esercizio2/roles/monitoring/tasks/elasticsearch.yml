@@ -1,3 +1,4 @@
+---
 - name: Create Elasticsearch configuration directory
   ansible.builtin.file:
     path: "{{ monitoring_elasticsearch_jvm_config_dir }}"

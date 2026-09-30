@@ -1,3 +1,4 @@
+---
 - name: Create Grafana configuration directory
   ansible.builtin.file:
     path: "{{ monitoring_grafana_config_dir }}"
@@ -8,6 +9,14 @@
   community.docker.docker_volume:
     name: "{{ monitoring_grafana_volume_name }}"
     state: present
+
+- name: Set Grafana volume ownership
+  ansible.builtin.file:
+    path: /var/lib/docker/volumes/grafana-data/_data
+    owner: 472
+    group: 472
+    mode: '0755'
+    recurse: true
 
 - name: Start Grafana container
   community.docker.docker_container:

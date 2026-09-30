@@ -1,6 +1,12 @@
 ---
-- name: Import Vagrant playbook
-  ansible.builtin.import_playbook: vagrant/playbook.yml
+- name: Deploy Vagrant VMs
+  hosts: localhost
+  roles:
+    - vagrant
 
-- name: Import monitoring playbook
-  ansible.builtin.import_playbook: monitoring/playbook.yml
+- name: Configure monitoring infrastructure
+  hosts: monitoring
+  become: true
+  roles:
+    - docker
+    - monitoring
