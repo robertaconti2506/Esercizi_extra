@@ -1,8 +1,8 @@
 # Vagrant
 prod-dev-test/.vagrant/
-Esercizio2/vagrant/.vagrant
-Esercizio2/vagrant/vagrant.err
-Esercizio2/vagrant/vagrant.out
+Esercizio2/roles/vagrant/.vagrant
+Esercizio2/roles/vagrant/vagrant.err
+Esercizio2/roles/vagrant/vagrant.out
 
 # macOS
 .DS_Store
