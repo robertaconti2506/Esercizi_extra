@@ -1,5 +1,8 @@
 # Vagrant
-.vagrant/
+prod-dev-test/.vagrant/
+Esercizio2/vagrant/.vagrant
+Esercizio2/vagrant/vagrant.err
+Esercizio2/vagrant/vagrant.out
 
 # macOS
 .DS_Store
