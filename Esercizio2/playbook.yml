@@ -22,6 +22,8 @@
           - lookup('community.general.collection_version', 'community.docker') != 'none'
           - lookup('community.general.collection_version', 'community.grafana') != 'none'
           - lookup('community.general.collection_version', 'community.posix') != 'none'
+          - lookup('community.general.collection_version', 'community.general') != 'none'
+          - lookup('community.general.collection_version', 'ansible.posix') != 'none'
         fail_msg: "One or more required Ansible collections are missing"
 
   roles:

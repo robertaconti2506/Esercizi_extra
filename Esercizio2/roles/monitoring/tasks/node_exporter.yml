@@ -43,18 +43,6 @@
     immediate: true
     state: enabled
 
-- name: Enable and start Node Exporter
-  ansible.builtin.systemd:
-    name: node_exporter
-    scope: user
-    daemon_reload: true
-    enabled: true
-    state: started
-  become: true
-  become_user: vagrant
-  environment:
-    XDG_RUNTIME_DIR: /run/user/1000
-
 - name: Enable systemd linger for vagrant
   ansible.builtin.file:
     path: /var/lib/systemd/linger/vagrant

@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 ExecStart=/usr/local/bin/node_exporter --web.listen-address=0.0.0.0:{{ monitoring_node_exporter_ports[inventory_hostname] }}
-Restart=om-failure
+Restart=on-failure
 
 [Install]
-WantedBy=multi-default.target
+WantedBy=default.target
