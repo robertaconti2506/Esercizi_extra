@@ -1,12 +1,29 @@
 ---
 - name: Deploy Vagrant VMs
   hosts: localhost
+  pre_tasks:
+    - name: Verify that the Vagrant box is Rocky Linux
+      ansible.builtin.assert:
+        that:
+          - vagrant_box == "generic/rocky9"
+        fail_msg: "This exercise requires the Rocky Linux generic/rocky9 box"
+
   roles:
     - vagrant
 
 - name: Configure monitoring infrastructure
   hosts: monitoring
   become: true
+
+  pre_tasks:
+    - name: Verify required Ansible collections
+      ansible.builtin.assert:
+        that:
+          - lookup('community.general.collection_version', 'community.docker') != 'none'
+          - lookup('community.general.collection_version', 'community.grafana') != 'none'
+          - lookup('community.general.collection_version', 'community.posix') != 'none'
+        fail_msg: "One or more required Ansible collections are missing"
+
   roles:
     - docker
     - monitoring
