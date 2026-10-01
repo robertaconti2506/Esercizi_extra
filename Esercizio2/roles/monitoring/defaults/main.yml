@@ -20,9 +20,19 @@ monitoring_grafana_image: grafana/grafana:latest
 
 monitoring_grafana_port: 3000
 
-monitoring_grafana_config_dir: /opt/grafana
+monitoring_grafana_config_dir: /opt/grafana/provisioning
 
 monitoring_grafana_volume_name: grafana-data
+
+monitoring_grafana_admin_user: admin
+monitoring_grafana_admin_password: admin
+
+monitoring_grafana_prometheus_url: "http://192.168.45.15:9090"
+
+monitoring_grafana_provisioning_dir: /opt/grafana/provisioning
+monitoring_grafana_provisioning_container_dir: /etc/grafana/provisioning/datasources
+monitoring_grafana_datasource_provisioning_dir: "{{ monitoring_grafana_provisioning_dir }}"
+monitoring_grafana_datasource_provisioning_file: datasource.yml
 
 
 # Prometheus configuration

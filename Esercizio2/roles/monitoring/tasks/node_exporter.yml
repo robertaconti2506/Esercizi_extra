@@ -83,9 +83,9 @@
   become_user: vagrant
   environment:
     XDG_RUNTIME_DIR: /run/user/1000
-  register: node_exporter_service
+  register: monitoring_node_exporter_service
 
 - name: Fail if Node Exporter is not running
   ansible.builtin.fail:
     msg: "Node Exporter user service is not running"
-  when: node_exporter_service.status.ActiveState != "active"
+  when: monitoring_node_exporter_service.status.ActiveState != "active"

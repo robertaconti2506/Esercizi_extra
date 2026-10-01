@@ -5,6 +5,12 @@
     state: directory
     mode: '0755'
 
+- name: Create Grafana datasource provisioning file
+  ansible.builtin.template:
+    src: grafana-datasource.yml.j2
+    dest: "{{ monitoring_grafana_datasource_provisioning_dir }}/{{ monitoring_grafana_datasource_provisioning_file }}"
+    mode: '0644'
+
 - name: Create Grafana Docker volume
   community.docker.docker_volume:
     name: "{{ monitoring_grafana_volume_name }}"
@@ -12,7 +18,7 @@
 
 - name: Set Grafana volume ownership
   ansible.builtin.file:
-    path: /var/lib/docker/volumes/grafana-data/_data
+    path: /var/lib/docker/volumes/{{ monitoring_grafana_volume_name }}/data
     owner: 472
     group: 472
     mode: '0755'
@@ -28,6 +34,27 @@
       - "{{ monitoring_grafana_port }}:3000"
     volumes:
       - "{{ monitoring_grafana_volume_name }}:/var/lib/grafana"
+      - "{{ monitoring_grafana_datasource_provisioning_dir }}:{{ monitoring_grafana_provisioning_container_dir }}:ro"
+
+- name: Wait for Grafana to be ready
+  ansible.builtin.uri:
+    url: "http://localhost:{{ monitoring_grafana_port }}/api/health"
+    method: GET
+    status_code: 200
+  register: monitoring_grafana_health
+  retries: 13
+  delay: 5
+  until: monitoring_grafana_health.status == 200
+
+- name: Import Node Exporter Full dashboard
+  community.grafana.grafana_dashboard:
+    grafana_url: "http://localhost:{{ monitoring_grafana_port }}"
+    grafana_user: "{{ monitoring_grafana_admin_user }}"
+    grafana_password: "{{ monitoring_grafana_admin_password }}"
+    dashboard_id: 1860
+    dashboard_revision: 45
+    state: present
+    overwrite: true
 
 - name: Verify Grafana is running
   community.docker.docker_container_info:

@@ -1,7 +1,7 @@
 ---
 - name: Create Vagrant VMS
   community.vagrant.vagrant:
-    instances: "{{ vms }}"
+    instances: "{{ vagrant_vms }}"
     default_box: "{{ vagrant_box }}"
     provider_name: "{{ vagrant_provider }}"
     state: up
