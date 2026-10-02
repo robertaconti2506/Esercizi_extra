@@ -7,7 +7,7 @@ In questo esercizio viene creata una piccola infrastruttura di monitoring utiliz
 Vengono create tre virtual machine Rocky Linux:
 - `elasticsearch-host`, dove viene eseguito Elasticsearch tramite Docker
 - `monitoring-grafana`, dove viene eseguito Grafana tramite Docker
-- `monitoring-prometheus`, dove viene eseguito Prometheus tramite Docker
+- `monitoring-prometheus`, dove viene eseguito Prometheus tramite Docker <br/> 
 Su tutte e tre le macchine viene installato anche Node Exporter direttamente sulla VM, quindi senza utilizzare Docker. 
 Node Exporter raccoglie ed espone le metriche delle macchine, Prometheus le raccoglie tramite scarping e Grafana le utilizza per creare le visualizzazioni.
 L'obiettivo dell'esercizio è mettere insieme questi componenti e automatizzarne il deployment e la configurazione tramite Ansible.
@@ -15,7 +15,7 @@ L'obiettivo dell'esercizio è mettere insieme questi componenti e automatizzarne
 ## Struttura del progetto
 
 ```
-.
+Esercizio2
 ├── inventory.ini
 ├── playbook.yml
 ├── requirements.yml
@@ -55,14 +55,14 @@ L'obiettivo dell'esercizio è mettere insieme questi componenti e automatizzarne
 
 Il `playbook.yml` è composto da due play principali.
 
-`Deploy Vagrant VMs`
+`Deploy Vagrant VMs` <br/>
 Il primo play viene eseguito su `localhost` e utilizza il ruolo `vagrant`.
 Prima dell'esecuzione viene verificato che la box Vagrant utilizzata sia:
 ```text
 generic/rocky9
 ```
 
-`Configure monitoring infrastructure`
+`Configure monitoring infrastructure` <br/>
 Il secondo play viene eseguito sul gruppo:
 ```text
 monitoring
@@ -96,7 +96,7 @@ ansible-galaxy collection install -r requirements.yml
 Dalla directory principale del progetto è possibile avviare il deployment tramite:
 
 ```bash
-ansible-playbook playbook.yml
+ansible-playbook -i inventory.ini playbook.yml
 ```
 
 
@@ -108,7 +108,7 @@ ansible-playbook playbook.yml
              ┌───────────┴───────────┐
              │                       │
              ▼                       ▼
-        Vagrant role             monitoring
+          vagrant                monitoring
              │                       │
              ▼                       ▼
         3 Rocky VM              Docker role
@@ -142,7 +142,7 @@ L'infrastruttura utilizza quattro componenti principali: Elasticsearch, Promethe
 ### Elasticsearch
 
 Elasticsearch è un motore di ricerca e analisi distribuito. In questo esercizio viene eseguito all'interno di un container Docker sulla macchina `elasticsearch-host`.
-Il suo compito principale è quello di permettere di archiviare e ricercare grandi quantità di dati in modo veloce. Elasticsearch non viene utilizzato direttamente per raccogliere le metriche del monitoring realizzato in questo esercizio, ma viene comunque configurato come richiesto dalla traccia, con un heap JVM di 1 GB.
+Il suo compito principale è quello di permettere di archiviare e ricercare grandi quantità di dati in modo veloce. Elasticsearch non viene utilizzato direttamente per raccogliere le metriche del monitoring realizzato in questo esercizio, ma viene comunque configurato, come richiesto, con un heap JVM di 1 GB.
 
 ### Prometheus
 

@@ -1,6 +1,6 @@
 <h1 align="center">Monitoring </h1>
 
-Il ruolo `monitoring` configura tutta la parte di monitoring dell'infrastruttura.
+Il ruolo `monitoring` configura tutta la parte di monitoring dell'infrastruttura. <br/>
 Il ruolo viene eseguito sulle tre VM del gruppo `monitoring` e, in base al gruppo a cui appartiene ciascun host, configura:
 - Elasticsearch su `elasticsearch-host`
 - Grafana su `monitoring-grafana`
@@ -24,16 +24,14 @@ I dati di Elasticsearch vengono salvati in un volume Docker chiamato `elasticsea
 
 ### Memoria JVM
 
-La memoria dalla JVM di Elasticsearch. L'esercizio richiede di impostare `1 GB` di heap, quindi vengono configurati sia il valore iniziale sia quello massimo a `1 GB`:
+L'esercizio richiede di impostare `1 GB` di heap, quindi vengono configurati sia il valore iniziale sia quello massimo a `1 GB`:
 ```
 -Xms1g
 -Xmx1g
 ```
 
 Queste impostazioni vengono generate automaticamente dal template `jvm.options.j2` e montate all'interno del container nella directory prevista da Elasticsearch.
-
-Infine, Elasticsearch viene configurato come nodo singolo e la security viene disabilitata, così da mantenere la configurazione semplice e adatta allo scopo dell'esercizio.
-### Verifica
+Elasticsearch viene configurato come nodo singolo. Per semplificare la configurazione dell'ambiente di esercizio, la security di Elasticsearch viene disabilitata tramite `xpack.security.enabled: "false"`.
 
 Al termine della configurazione, Ansible controlla che il container Elasticsearch sia effettivamente in esecuzione.
 È possibile verificare manualmente il servizio collegandosi alla VM `elasticsearch-host` e controllando lo stato del container:
@@ -165,8 +163,6 @@ curl http://192.168.45.15:9103/metrics  # monitoring-prometheus
 ```
 
 Se il servizio funziona correttamente, viene restituito un elenco di metriche.
-
-Lo stesso controllo può essere effettuato sulle altre due VM utilizzando le rispettive porte `9102` e `9103`.
 
 ## Flusso del monitoring
 
