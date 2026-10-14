@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block titolo %}{{ articolo.titolo }} · Joursense{% endblock %}
+
+{% block contenuto %}
+<article class="articolo">
+  <a class="indietro" href="/">← Tutte le notizie</a>
+  <h1>{{ articolo.titolo }}</h1>
+  <p class="sommario grande">{{ articolo.sommario }}</p>
+  <p class="meta">
+    di <strong>{{ articolo.autore }}</strong> · {{ articolo.pubblicato_il | data }}
+    {% if visite %} · {{ visite }} {{ "lettura" if visite == 1 else "letture" }}{% endif %}
+  </p>
+  <div class="testo">
+    {% for p in paragrafi %}
+      <p>{{ p }}</p>
+    {% endfor %}
+  </div>
+</article>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block contenuto %}
+<div class="griglia">
+  <section>
+    <h1 class="sezione">Ultime notizie</h1>
+
+    {% if not articoli %}
+      <p class="vuoto">Ancora nessun articolo. <a href="/nuovo">Scrivi il primo!</a></p>
+    {% endif %}
+
+    {% for a in articoli %}
+      <article class="anteprima {% if loop.first %}in-evidenza{% endif %}">
+        <h2><a href="/articoli/{{ a.id }}">{{ a.titolo }}</a></h2>
+        <p class="sommario">{{ a.sommario }}</p>
+        <p class="meta">
+          {{ a.autore }} · {{ a.pubblicato_il | data }}
+          {% if visite.get(a.id) %} · {{ visite[a.id] }} {{ "lettura" if visite[a.id] == 1 else "letture" }}{% endif %}
+        </p>
+      </article>
+    {% endfor %}
+  </section>
+
+  <aside>
+    <h2 class="sezione">I più letti</h2>
+    {% if piu_letti %}
+      <ol class="classifica">
+        {% for a, v in piu_letti %}
+          <li>
+            <a href="/articoli/{{ a.id }}">{{ a.titolo }}</a>
+            <span class="meta">{{ v }} {{ "lettura" if v == 1 else "letture" }}</span>
+          </li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      <p class="meta">La classifica si riempie man mano che gli articoli vengono letti.</p>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

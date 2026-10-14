@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titolo %}Joursense{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
+</head>
+<body>
+  <header class="testata">
+    <div class="contenitore testata-riga">
+      <a class="logo" href="/">Joursense</a>
+      <nav>
+        <a href="/">Notizie</a>
+        <a class="bottone" href="/nuovo">Scrivi un articolo</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="contenitore">
+    {% block contenuto %}{% endblock %}
+  </main>
+
+  <footer class="contenitore piede">
+    Il giornalino aziendale · servito dal pod <code>{{ pod }}</code>
+  </footer>
+</body>
+</html>

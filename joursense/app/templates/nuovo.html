@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block titolo %}Scrivi un articolo · Joursense{% endblock %}
+
+{% block contenuto %}
+<section class="modulo">
+  <a class="indietro" href="/">← Tutte le notizie</a>
+  <h1>Scrivi un articolo</h1>
+
+  {% if errori %}
+    <div class="errori" role="alert">
+      {% for e in errori %}<p>{{ e }}</p>{% endfor %}
+    </div>
+  {% endif %}
+
+  <form method="post" action="/nuovo">
+    <label for="titolo">Titolo</label>
+    <input id="titolo" name="titolo" maxlength="200" required value="{{ valori.titolo or '' }}">
+
+    <label for="sommario">Sommario <span class="facoltativo">(facoltativo: se lo lasci vuoto usiamo l'inizio del testo)</span></label>
+    <input id="sommario" name="sommario" maxlength="400" value="{{ valori.sommario or '' }}">
+
+    <label for="contenuto">Testo <span class="facoltativo">(lascia una riga vuota tra i paragrafi)</span></label>
+    <textarea id="contenuto" name="contenuto" rows="12" required>{{ valori.contenuto or '' }}</textarea>
+
+    <label for="autore">Firma</label>
+    <input id="autore" name="autore" maxlength="100" required value="{{ valori.autore or '' }}">
+
+    <button type="submit" class="bottone">Pubblica</button>
+  </form>
+</section>
+{% endblock %}
