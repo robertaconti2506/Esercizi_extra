@@ -9,11 +9,13 @@ FROM registry.access.redhat.com/ubi9/python-312
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Poi copiamo il codice dell'app
+# Poi copiamo il codice dell'app e le migrazioni del database
+COPY alembic.ini .
+COPY migrations/ migrations/
 COPY app/ app/
 
 # Porta su cui ascolta l'app
 EXPOSE 8080
 
-# Comando di avvio
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+# All'avvio: prima aggiorna le tabelle del database, poi avvia l'app
+CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8080"]

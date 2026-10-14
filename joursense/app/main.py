@@ -1,80 +1,133 @@
-import html
-import os
 import socket
+from pathlib import Path
 
-import psycopg
-import redis
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import FastAPI, Form, HTTPException, Request
+from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from sqlalchemy import select, text
 
-# Configurazione letta dalle variabili d'ambiente (impostate nel Deployment)
-DB_HOST = os.getenv("DB_HOST", "postgres")
-DB_PORT = int(os.getenv("DB_PORT", "5432"))
-DB_NAME = os.environ["DB_NAME"]
-DB_USER = os.environ["DB_USER"]
-DB_PASSWORD = os.environ["DB_PASSWORD"]
+from app import cache
+from app.db import SessionLocal
+from app.models import Articolo
 
-REDIS_HOST = os.getenv("REDIS_HOST", "redis")
-REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
-REDIS_PASSWORD = os.environ["REDIS_PASSWORD"]
+BASE = Path(__file__).parent
 
-r = redis.Redis(
-    host=REDIS_HOST,
-    port=REDIS_PORT,
-    password=REDIS_PASSWORD,
-    socket_timeout=2,
-    decode_responses=True,
-)
+app = FastAPI(title="Joursense")
+app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
+templates = Jinja2Templates(directory=BASE / "templates")
 
-app = FastAPI(title="Giornalino")
+# Nome del pod che risponde, mostrato nel pie' di pagina
+templates.env.globals["pod"] = socket.gethostname()
 
 
-def db_connect():
-    return psycopg.connect(
-        host=DB_HOST,
-        port=DB_PORT,
-        dbname=DB_NAME,
-        user=DB_USER,
-        password=DB_PASSWORD,
-        connect_timeout=3,
-    )
+def _formatta_data(d):
+    mesi = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio",
+            "agosto", "settembre", "ottobre", "novembre", "dicembre"]
+    return f"{d.day} {mesi[d.month - 1]} {d.year}" if d else ""
 
 
-@app.get("/", response_class=HTMLResponse)
-def home():
-    # Contatore visite su Redis
-    visite = r.incr("visite:home")
+templates.env.filters["data"] = _formatta_data
 
-    # Versione di PostgreSQL, per verificare la connessione al database
-    with db_connect() as conn:
-        versione_db = conn.execute("SELECT version()").fetchone()[0]
 
-    # Nome del pod che ha risposto: con 2 repliche, ricaricando la pagina cambia
-    pod = socket.gethostname()
+# ---------- Pagine ----------
 
-    return f"""<!doctype html>
-<html lang="it">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Giornalino</title>
-  <style>
-    body {{ font-family: system-ui, sans-serif; max-width: 640px; margin: 3rem auto; padding: 0 1rem; color: #222; }}
-    h1 {{ margin-bottom: .2rem; }}
-    .card {{ border: 1px solid #ddd; border-radius: 10px; padding: 1rem 1.2rem; margin: 1rem 0; }}
-    .label {{ color: #777; font-size: .85rem; }}
-    .value {{ font-size: 1.1rem; margin-top: .2rem; word-break: break-word; }}
-  </style>
-</head>
-<body>
-  <h1>Hello giornalino!</h1>
-  <p>Se vedi questa pagina, app, PostgreSQL e Redis si parlano.</p>
-  <div class="card"><div class="label">Visite (contatore su Redis)</div><div class="value">{visite}</div></div>
-  <div class="card"><div class="label">Database</div><div class="value">{html.escape(versione_db)}</div></div>
-  <div class="card"><div class="label">Pod che ha risposto</div><div class="value">{html.escape(pod)}</div></div>
-</body>
-</html>"""
+@app.get("/")
+def home(request: Request):
+    with SessionLocal() as db:
+        articoli = db.scalars(
+            select(Articolo).order_by(Articolo.pubblicato_il.desc(), Articolo.id.desc()).limit(20)
+        ).all()
 
+        classifica = cache.piu_letti(5)
+        per_id = {a.id: a for a in articoli}
+        mancanti = [i for i, _ in classifica if i not in per_id]
+        if mancanti:
+            for a in db.scalars(select(Articolo).where(Articolo.id.in_(mancanti))):
+                per_id[a.id] = a
+
+    piu_letti = [(per_id[i], v) for i, v in classifica if i in per_id]
+    conteggi = cache.visite([a.id for a in articoli])
+
+    return templates.TemplateResponse(request, "home.html", {
+        "articoli": articoli,
+        "visite": conteggi,
+        "piu_letti": piu_letti,
+    })
+
+
+@app.get("/articoli/{articolo_id}")
+def dettaglio(request: Request, articolo_id: int):
+    with SessionLocal() as db:
+        articolo = db.get(Articolo, articolo_id)
+    if articolo is None:
+        raise HTTPException(status_code=404, detail="Articolo non trovato")
+
+    visite = cache.registra_visita(articolo_id)
+    paragrafi = [p.strip() for p in articolo.contenuto.split("\n\n") if p.strip()]
+
+    return templates.TemplateResponse(request, "articolo.html", {
+        "articolo": articolo,
+        "paragrafi": paragrafi,
+        "visite": visite,
+    })
+
+
+@app.get("/nuovo")
+def nuovo_form(request: Request):
+    return templates.TemplateResponse(request, "nuovo.html", {"errori": [], "valori": {}})
+
+
+@app.post("/nuovo")
+def nuovo_salva(
+    request: Request,
+    titolo: str = Form(""),
+    sommario: str = Form(""),
+    contenuto: str = Form(""),
+    autore: str = Form(""),
+):
+    valori = {
+        "titolo": titolo.strip(),
+        "sommario": sommario.strip(),
+        "contenuto": contenuto.strip(),
+        "autore": autore.strip(),
+    }
+
+    errori = []
+    if not valori["titolo"]:
+        errori.append("Il titolo e' obbligatorio.")
+    elif len(valori["titolo"]) > 200:
+        errori.append("Il titolo puo' avere al massimo 200 caratteri.")
+    if not valori["contenuto"]:
+        errori.append("Il testo dell'articolo e' obbligatorio.")
+    if not valori["autore"]:
+        errori.append("Indica chi firma l'articolo.")
+    elif len(valori["autore"]) > 100:
+        errori.append("Il nome dell'autore puo' avere al massimo 100 caratteri.")
+    if len(valori["sommario"]) > 400:
+        errori.append("Il sommario puo' avere al massimo 400 caratteri.")
+
+    if errori:
+        return templates.TemplateResponse(
+            request, "nuovo.html", {"errori": errori, "valori": valori}, status_code=400
+        )
+
+    # Se il sommario e' vuoto, usiamo l'inizio del testo
+    if not valori["sommario"]:
+        testo = " ".join(valori["contenuto"].split())
+        valori["sommario"] = testo if len(testo) <= 200 else testo[:197].rsplit(" ", 1)[0] + "..."
+
+    with SessionLocal() as db:
+        articolo = Articolo(**valori)
+        db.add(articolo)
+        db.commit()
+        nuovo_id = articolo.id
+
+    # Redirect dopo il POST: se l'utente ricarica la pagina non ripubblica l'articolo
+    return RedirectResponse(url=f"/articoli/{nuovo_id}", status_code=303)
+
+
+# ---------- Probe ----------
 
 @app.get("/healthz")
 def healthz():
@@ -84,19 +137,23 @@ def healthz():
 
 @app.get("/readyz")
 def readyz():
-    """Readiness: l'app e' pronta solo se raggiunge sia PostgreSQL sia Redis."""
-    errori = {}
-    try:
-        with db_connect() as conn:
-            conn.execute("SELECT 1")
-    except Exception as e:
-        errori["postgres"] = str(e)
-    try:
-        r.ping()
-    except Exception as e:
-        errori["redis"] = str(e)
+    """Readiness: l'app e' pronta se raggiunge PostgreSQL.
 
-    if errori:
-        return JSONResponse(status_code=503, content={"status": "not ready", "errori": errori})
-    return {"status": "ready"}
+    Redis viene solo segnalato: senza Redis il sito funziona lo stesso
+    (mancano solo i conteggi delle letture), quindi non ha senso togliere
+    il pod dal traffico.
+    """
+    stato = {"postgres": "ok", "redis": "ok"}
+    try:
+        with SessionLocal() as db:
+            db.execute(text("SELECT 1"))
+    except Exception as e:
+        stato["postgres"] = str(e)
+    try:
+        cache.ping()
+    except Exception as e:
+        stato["redis"] = str(e)
 
+    if stato["postgres"] != "ok":
+        return JSONResponse(status_code=503, content={"status": "not ready", **stato})
+    return {"status": "ready", **stato}

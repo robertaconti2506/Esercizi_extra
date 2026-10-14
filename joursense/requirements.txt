@@ -2,3 +2,7 @@ fastapi
 uvicorn
 psycopg[binary]
 redis
+jinja2
+python-multipart
+sqlalchemy
+alembic
