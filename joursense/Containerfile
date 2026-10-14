@@ -17,5 +17,8 @@ COPY app/ app/
 # Porta su cui ascolta l'app
 EXPOSE 8080
 
-# All'avvio: prima aggiorna le tabelle del database, poi avvia l'app
-CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8080"]
+# All'avvio: prima aggiorna le tabelle del database, poi avvia l'app.
+# --proxy-headers: l'HTTPS termina sul router di OpenShift, che inoltra all'app in http
+# e aggiunge l'header X-Forwarded-Proto: https. Con questa opzione l'app lo legge e sa
+# che l'utente sta navigando in https.
+CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8080 --proxy-headers --forwarded-allow-ips='*'"]
