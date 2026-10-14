@@ -1,0 +1,19 @@
+# Immagine base Red Hat con Python 3.12: gira gia' con utente non-root (UID 1001)
+# ed e' compatibile con l'UID casuale che OpenShift assegna ai container.
+FROM registry.access.redhat.com/ubi9/python-312
+
+# La cartella di lavoro predefinita dell'immagine e' /opt/app-root/src
+
+# Prima installiamo le librerie: se il codice cambia ma requirements.txt no,
+# questo passaggio viene preso dalla cache e la build e' piu' veloce.
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Poi copiamo il codice dell'app
+COPY app/ app/
+
+# Porta su cui ascolta l'app
+EXPOSE 8080
+
+# Comando di avvio
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
