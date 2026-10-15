@@ -33,6 +33,25 @@ PASSWORD_MIN = 8
 # Si imposta come variabile d'ambiente nel Deployment, senza toccare il codice.
 DOMINIO_CONSENTITO = os.getenv("DOMINIO_EMAIL_CONSENTITO", "").strip().lower().lstrip("@")
 
+# Email degli amministratori, separate da virgola (es. "a@x.com,b@x.com").
+# Si imposta come variabile d'ambiente nel Deployment: cosi' nessuno puo'
+# diventare admin dal sito, serve accesso al progetto su OpenShift.
+ADMIN_EMAILS = {
+    e.strip().lower() for e in os.getenv("ADMIN_EMAILS", "").split(",") if e.strip()
+}
+
+
+def is_admin(utente) -> bool:
+    return utente is not None and utente.email in ADMIN_EMAILS
+
+
+def puo_eliminare(utente, articolo) -> bool:
+    """L'autore puo' eliminare i suoi articoli; un admin puo' eliminare tutto."""
+    if utente is None:
+        return False
+    return articolo.autore_id == utente.id or is_admin(utente)
+
+
 _hasher = PasswordHasher()
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 

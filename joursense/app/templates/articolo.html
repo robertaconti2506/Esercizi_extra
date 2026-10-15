@@ -17,11 +17,13 @@
     {% endfor %}
   </div>
 
-  {% if utente and articolo.autore_id == utente.id %}
+  {% if puo_eliminare %}
     <form method="post" action="/articoli/{{ articolo.id }}/elimina" class="elimina"
           onsubmit="return confirm('Vuoi davvero eliminare questo articolo? Non si può annullare.');">
       <button type="submit" class="bottone pericolo">Elimina articolo</button>
-      <span class="meta">Lo vedi solo tu, perché l'hai scritto tu.</span>
+      <span class="meta">
+        {% if e_autore %}Lo vedi solo tu, perché l'hai scritto tu.{% else %}Lo vedi perché sei admin.{% endif %}
+      </span>
     </form>
   {% endif %}
 </article>

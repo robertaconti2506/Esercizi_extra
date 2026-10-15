@@ -106,6 +106,7 @@ form .bottone { align-self: flex-start; margin-top: 18px; padding: 10px 20px; }
 /* Utente nella testata */
 .chi { font-size: .9rem; color: var(--tenue); border-left: 1px solid var(--linea); padding-left: 18px; }
 .esci { margin: 0; }
+.badge-admin { display: inline-block; margin-left: 4px; padding: 0 6px; border-radius: 4px; background: #fbeae6; color: #7a2412; font-size: .75rem; font-weight: 600; vertical-align: 1px; }
 button.link {
   background: none; border: 0; padding: 0; font: inherit; font-size: .95rem;
   color: var(--inchiostro); text-decoration: underline; cursor: pointer;

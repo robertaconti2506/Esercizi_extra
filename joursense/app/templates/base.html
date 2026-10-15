@@ -18,7 +18,7 @@
         <a href="/giochi">Giochi</a>
         <a href="/dipendente-del-mese">Dipendente del mese</a>
         <a class="bottone" href="/nuovo">Scrivi un articolo</a>
-        <span class="chi" title="{{ utente.email }}">{{ utente.nome }}</span>
+        <span class="chi" title="{{ utente.email }}">{{ utente.nome }}{% if admin %} <span class="badge-admin">admin</span>{% endif %}</span>
         <form method="post" action="/logout" class="esci">
           <button type="submit" class="link">Esci</button>
         </form>

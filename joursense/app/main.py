@@ -58,6 +58,7 @@ def pagina(request: Request, nome: str, contesto: dict | None = None, status_cod
     """Mostra un template, passando sempre anche l'utente loggato (se c'e')."""
     contesto = dict(contesto or {})
     contesto.setdefault("utente", getattr(request.state, "utente", None))
+    contesto["admin"] = auth.is_admin(contesto["utente"])
     return templates.TemplateResponse(request, nome, contesto, status_code=status_code)
 
 
@@ -233,6 +234,8 @@ def dettaglio(request: Request, articolo_id: int, utente: Utente = Depends(utent
         "articolo": articolo,
         "paragrafi": paragrafi,
         "visite": visite,
+        "puo_eliminare": auth.puo_eliminare(utente, articolo),
+        "e_autore": articolo.autore_id == utente.id,
     })
 
 
@@ -292,7 +295,7 @@ def elimina_articolo(articolo_id: int, utente: Utente = Depends(utente_loggato))
             raise HTTPException(status_code=404, detail="Articolo non trovato")
         # Il controllo vero e' qui, sul server: nascondere il pulsante non basta,
         # perche' chiunque potrebbe mandare questa richiesta a mano.
-        if articolo.autore_id != utente.id:
+        if not auth.puo_eliminare(utente, articolo):
             raise HTTPException(status_code=403, detail="Puoi eliminare solo i tuoi articoli")
         db.execute(delete(Articolo).where(Articolo.id == articolo_id))
         db.commit()
