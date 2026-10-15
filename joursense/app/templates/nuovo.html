@@ -6,6 +6,7 @@
 <section class="modulo">
   <a class="indietro" href="/">← Tutte le notizie</a>
   <h1>Scrivi un articolo</h1>
+  <p class="meta">Verrà pubblicato con la tua firma: <strong>{{ utente.nome }}</strong></p>
 
   {% if errori %}
     <div class="errori" role="alert">
@@ -22,9 +23,6 @@
 
     <label for="contenuto">Testo <span class="facoltativo">(lascia una riga vuota tra i paragrafi)</span></label>
     <textarea id="contenuto" name="contenuto" rows="12" required>{{ valori.contenuto or '' }}</textarea>
-
-    <label for="autore">Firma</label>
-    <input id="autore" name="autore" maxlength="100" required value="{{ valori.autore or '' }}">
 
     <button type="submit" class="bottone">Pubblica</button>
   </form>

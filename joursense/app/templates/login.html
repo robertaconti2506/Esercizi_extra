@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block titolo %}Accedi · Joursense{% endblock %}
+
+{% block contenuto %}
+<section class="accesso">
+  <p class="occhiello">Il giornalino aziendale</p>
+  <h1>Bentornato</h1>
+  <p class="meta">Accedi per leggere e scrivere le notizie dell'ufficio.</p>
+
+  {% if errori %}
+    <div class="errori" role="alert">
+      {% for e in errori %}<p>{{ e }}</p>{% endfor %}
+    </div>
+  {% endif %}
+
+  <form method="post" action="/login">
+    <input type="hidden" name="next" value="{{ next }}">
+
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" autocomplete="email" required autofocus value="{{ email }}">
+
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required>
+
+    <button type="submit" class="bottone">Accedi</button>
+  </form>
+
+  <p class="cambio">Non hai un account? <a href="/registrati">Registrati</a></p>
+</section>
+{% endblock %}

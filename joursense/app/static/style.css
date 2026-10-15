@@ -10,6 +10,9 @@
 
 * { box-sizing: border-box; }
 
+/* Gli elementi con l'attributo "hidden" restano nascosti anche se hanno un display impostato */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   background: var(--carta);
@@ -99,6 +102,104 @@ form .bottone { align-self: flex-start; margin-top: 18px; padding: 10px 20px; }
 
 .errori { background: #fbeae6; border: 1px solid #e5b4a8; color: #7a2412; border-radius: 6px; padding: 10px 14px; }
 .errori p { margin: 4px 0; }
+
+/* Utente nella testata */
+.chi { font-size: .9rem; color: var(--tenue); border-left: 1px solid var(--linea); padding-left: 18px; }
+.esci { margin: 0; }
+button.link {
+  background: none; border: 0; padding: 0; font: inherit; font-size: .95rem;
+  color: var(--inchiostro); text-decoration: underline; cursor: pointer;
+}
+@media (max-width: 560px) { .chi { display: none; } }
+
+/* Accesso e registrazione */
+.accesso { max-width: 420px; margin: 0 auto; padding: 56px 0 32px; }
+.accesso h1 { font-family: var(--serif); font-size: 2.4rem; line-height: 1.1; margin: 4px 0 8px; }
+.accesso > .meta { margin-bottom: 8px; font-size: .95rem; }
+.accesso .errori { margin-top: 16px; }
+.accesso form .bottone { align-self: stretch; margin-top: 22px; padding: 11px 20px; }
+.occhiello { margin: 0; font-size: .8rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--accento); }
+.cambio { margin-top: 22px; font-size: .95rem; color: var(--tenue); border-top: 1px solid var(--linea); padding-top: 18px; }
+.cambio a { color: var(--accento); }
+
+/* Elimina articolo */
+.elimina { flex-direction: row; align-items: center; gap: 14px; margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--linea); flex-wrap: wrap; }
+.elimina .bottone { margin: 0; align-self: auto; }
+.bottone.pericolo { background: #fff; color: #9b2c1a; border: 1px solid #e5b4a8; }
+.bottone.pericolo:hover { background: #fbeae6; filter: none; }
+
+/* Sezioni extra: impaginazione comune */
+.dipendente, .meteo, .giochi { padding: 32px 0; }
+.nascosto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* Dipendente del mese */
+.premio { display: grid; grid-template-columns: 200px 1fr; gap: 36px; align-items: center; padding: 28px; background: #fff; border: 1px solid var(--linea); border-radius: 10px; }
+@media (max-width: 640px) { .premio { grid-template-columns: 1fr; text-align: center; } .ritratto { margin: 0 auto; } }
+.ritratto { position: relative; width: 200px; height: 240px; border: 6px double #b08a3e; background: #efe7d4; display: flex; align-items: center; justify-content: center; }
+.iniziali { font-family: var(--serif); font-size: 4.5rem; color: #6b4f1d; letter-spacing: 2px; }
+.nastro { position: absolute; bottom: -14px; left: 50%; transform: translateX(-50%); background: var(--accento); color: #fff; font-size: .85rem; font-weight: 700; padding: 4px 14px; border-radius: 4px; }
+.premio-testo h2 { font-family: var(--serif); font-size: 2.6rem; line-height: 1.1; margin: 4px 0; }
+.ruolo { color: var(--tenue); margin: 0 0 16px; }
+.premio blockquote { margin: 0; padding-left: 16px; border-left: 3px solid var(--accento); font-family: var(--serif); font-size: 1.15rem; font-style: italic; }
+@media (max-width: 640px) { .premio blockquote { border-left: 0; padding: 0; } }
+.archivio-titolo { margin-top: 40px; }
+.albo { list-style: none; padding: 0; margin: 16px 0 0; }
+.albo li { display: grid; grid-template-columns: 150px 130px 1fr; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--linea); align-items: baseline; }
+@media (max-width: 640px) { .albo li { grid-template-columns: 1fr; gap: 2px; } }
+.albo-mese { color: var(--tenue); font-size: .9rem; }
+.albo-nome { font-family: var(--serif); font-weight: 700; }
+.albo-motivo { font-size: .95rem; }
+
+/* Meteo */
+.cerca-citta { flex-direction: row; gap: 10px; max-width: 460px; }
+.cerca-citta .bottone { margin: 0; align-self: auto; white-space: nowrap; }
+.meteo-oggi { display: flex; justify-content: space-between; align-items: center; gap: 32px; flex-wrap: wrap; margin-top: 24px; padding: 28px; background: #fff; border: 1px solid var(--linea); border-radius: 10px; }
+.meteo-oggi .occhiello { margin-bottom: 4px; }
+.temp-grande { font-family: var(--serif); font-size: 4.5rem; line-height: 1; margin: 0; }
+.meteo-desc { margin: 8px 0 0; font-size: 1.1rem; }
+.dettagli { display: grid; grid-template-columns: repeat(2, minmax(110px, auto)); gap: 14px 32px; margin: 0; }
+.dettagli dt { color: var(--tenue); font-size: .85rem; }
+.dettagli dd { margin: 0; font-size: 1.15rem; }
+.giorni { list-style: none; padding: 0; margin: 16px 0 0; display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+@media (max-width: 640px) { .giorni { grid-template-columns: repeat(4, 1fr); } }
+.giorni li { background: #fff; border: 1px solid var(--linea); border-radius: 8px; padding: 12px 6px; text-align: center; display: flex; flex-direction: column; gap: 2px; }
+.g-nome { font-size: .85rem; color: var(--tenue); text-transform: capitalize; }
+.g-icona { font-size: 1.6rem; }
+.g-max { font-weight: 700; }
+.g-min { color: var(--tenue); font-size: .9rem; }
+.fonte { margin-top: 24px; }
+
+/* Giochi */
+.schede { display: flex; gap: 6px; margin: 20px 0 24px; border-bottom: 1px solid var(--linea); }
+.scheda { background: none; border: 0; border-bottom: 3px solid transparent; padding: 8px 14px; font: inherit; color: var(--tenue); cursor: pointer; margin-bottom: -1px; }
+.scheda.attiva { color: var(--inchiostro); border-bottom-color: var(--accento); font-weight: 600; }
+.gioco { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+.istruzioni { margin: 0; color: var(--tenue); }
+.esito { min-height: 1.6em; margin: 0; font-weight: 600; }
+.punteggio { margin: 0; color: var(--tenue); }
+.punteggio strong { color: var(--inchiostro); }
+
+.tris { display: grid; grid-template-columns: repeat(3, 84px); gap: 6px; }
+.tris button { width: 84px; height: 84px; font-family: var(--serif); font-size: 2.6rem; background: #fff; border: 1px solid var(--linea); border-radius: 8px; cursor: pointer; color: var(--inchiostro); }
+.tris button:not(:disabled):hover { background: #f3efe6; }
+.tris button:disabled { cursor: default; }
+.tris .segno-X { color: var(--accento); }
+
+.memory { display: grid; grid-template-columns: repeat(4, 72px); gap: 8px; }
+.carta { width: 72px; height: 72px; border-radius: 8px; border: 1px solid #8f2c18; background: var(--accento); font-size: 2rem; cursor: pointer; }
+.carta.scoperta { background: #fff; border-color: var(--linea); }
+.carta.trovata { background: #f0ebdf; opacity: .75; cursor: default; }
+
+#snake { border: 1px solid var(--linea); border-radius: 8px; max-width: 100%; }
+.frecce { display: grid; grid-template-columns: repeat(3, 48px); grid-template-rows: repeat(2, 44px); gap: 4px; }
+.frecce button { font-size: 1.1rem; border: 1px solid var(--linea); background: #fff; border-radius: 6px; cursor: pointer; }
+.frecce [data-dir="su"] { grid-column: 2; }
+.frecce [data-dir="sx"] { grid-column: 1; grid-row: 2; }
+.frecce [data-dir="giu"] { grid-column: 2; grid-row: 2; }
+.frecce [data-dir="dx"] { grid-column: 3; grid-row: 2; }
+
+/* Testata con piu' voci: va a capo bene sugli schermi stretti */
+nav { flex-wrap: wrap; row-gap: 8px; }
 
 /* Piede */
 .piede { border-top: 1px solid var(--linea); padding-top: 16px; padding-bottom: 32px; color: var(--tenue); font-size: .85rem; }

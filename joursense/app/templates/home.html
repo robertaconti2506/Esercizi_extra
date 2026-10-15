@@ -15,7 +15,7 @@
         <p class="sommario">{{ a.sommario }}</p>
         <p class="meta">
           {{ a.autore }} · {{ a.pubblicato_il | data }}
-          {% if visite.get(a.id) %} · {{ visite[a.id] }} {{ "lettura" if visite[a.id] == 1 else "letture" }}{% endif %}
+          {% if a.letture %} · {{ a.letture }} {{ "lettura" if a.letture == 1 else "letture" }}{% endif %}
         </p>
       </article>
     {% endfor %}
@@ -25,10 +25,10 @@
     <h2 class="sezione">I più letti</h2>
     {% if piu_letti %}
       <ol class="classifica">
-        {% for a, v in piu_letti %}
+        {% for a in piu_letti %}
           <li>
             <a href="/articoli/{{ a.id }}">{{ a.titolo }}</a>
-            <span class="meta">{{ v }} {{ "lettura" if v == 1 else "letture" }}</span>
+            <span class="meta">{{ a.letture }} {{ "lettura" if a.letture == 1 else "letture" }}</span>
           </li>
         {% endfor %}
       </ol>

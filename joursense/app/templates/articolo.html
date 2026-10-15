@@ -16,5 +16,13 @@
       <p>{{ p }}</p>
     {% endfor %}
   </div>
+
+  {% if utente and articolo.autore_id == utente.id %}
+    <form method="post" action="/articoli/{{ articolo.id }}/elimina" class="elimina"
+          onsubmit="return confirm('Vuoi davvero eliminare questo articolo? Non si può annullare.');">
+      <button type="submit" class="bottone pericolo">Elimina articolo</button>
+      <span class="meta">Lo vedi solo tu, perché l'hai scritto tu.</span>
+    </form>
+  {% endif %}
 </article>
 {% endblock %}

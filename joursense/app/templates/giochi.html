@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block titolo %}Giochi · Joursense{% endblock %}
+
+{% block contenuto %}
+<section class="giochi">
+  <h1 class="sezione">Pausa caffè</h1>
+  <p class="meta">Tre minigiochi per la pausa. I record restano salvati sul tuo browser.</p>
+
+  <div class="schede" role="tablist">
+    <button role="tab" class="scheda attiva" data-gioco="tris" aria-selected="true">Tris</button>
+    <button role="tab" class="scheda" data-gioco="memory" aria-selected="false">Memory</button>
+    <button role="tab" class="scheda" data-gioco="snake" aria-selected="false">Snake</button>
+  </div>
+
+  <!-- TRIS -->
+  <div class="gioco" id="gioco-tris">
+    <p class="istruzioni">Tu sei <strong>X</strong>, il computer è <strong>O</strong>. Fai tre in fila.</p>
+    <div class="tris" id="tris"></div>
+    <p class="esito" id="tris-esito" role="status"></p>
+    <p class="punteggio">Vittorie <strong id="tris-v">0</strong> · Pareggi <strong id="tris-p">0</strong> · Sconfitte <strong id="tris-s">0</strong></p>
+    <button class="bottone" id="tris-nuova">Nuova partita</button>
+  </div>
+
+  <!-- MEMORY -->
+  <div class="gioco" id="gioco-memory" hidden>
+    <p class="istruzioni">Gira due carte alla volta e trova tutte le coppie con meno mosse possibile.</p>
+    <div class="memory" id="memory"></div>
+    <p class="esito" id="memory-esito" role="status"></p>
+    <p class="punteggio">Mosse <strong id="memory-mosse">0</strong> · Record <strong id="memory-record">—</strong></p>
+    <button class="bottone" id="memory-nuova">Mescola</button>
+  </div>
+
+  <!-- SNAKE -->
+  <div class="gioco" id="gioco-snake" hidden>
+    <p class="istruzioni">Usa le frecce della tastiera (o i pulsanti) e mangia i chicchi di caffè.</p>
+    <canvas id="snake" width="320" height="320" aria-label="Campo di gioco di Snake"></canvas>
+    <p class="esito" id="snake-esito" role="status"></p>
+    <p class="punteggio">Punti <strong id="snake-punti">0</strong> · Record <strong id="snake-record">0</strong></p>
+    <div class="frecce">
+      <button data-dir="su" aria-label="Su">▲</button>
+      <button data-dir="sx" aria-label="Sinistra">◀</button>
+      <button data-dir="giu" aria-label="Giù">▼</button>
+      <button data-dir="dx" aria-label="Destra">▶</button>
+    </div>
+    <button class="bottone" id="snake-via">Gioca</button>
+  </div>
+</section>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const leggi = (k, def) => { try { return JSON.parse(localStorage.getItem(k)) ?? def; } catch (e) { return def; } };
+  const scrivi = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+
+  // ---------- Schede ----------
+  let snakeFerma = () => {};
+  document.querySelectorAll(".scheda").forEach((b) => {
+    b.addEventListener("click", () => {
+      document.querySelectorAll(".scheda").forEach((x) => {
+        x.classList.toggle("attiva", x === b);
+        x.setAttribute("aria-selected", x === b);
+      });
+      document.querySelectorAll(".gioco").forEach((g) => { g.hidden = g.id !== "gioco-" + b.dataset.gioco; });
+      if (b.dataset.gioco !== "snake") snakeFerma();
+    });
+  });
+
+  // ---------- TRIS ----------
+  const LINEE = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  let campo, finita;
+  const statsTris = leggi("joursense-tris", { v: 0, p: 0, s: 0 });
+
+  function vincitore(c) {
+    for (const [a, b, d] of LINEE) if (c[a] && c[a] === c[b] && c[a] === c[d]) return c[a];
+    return c.every(Boolean) ? "pari" : null;
+  }
+  // Minimax: il computer valuta tutte le mosse possibili fino alla fine
+  function minimax(c, turno) {
+    const w = vincitore(c);
+    if (w === "O") return { p: 1 };
+    if (w === "X") return { p: -1 };
+    if (w === "pari") return { p: 0 };
+    let migliore = { p: turno === "O" ? -2 : 2 };
+    c.forEach((v, i) => {
+      if (v) return;
+      c[i] = turno;
+      const r = minimax(c, turno === "O" ? "X" : "O");
+      c[i] = null;
+      if (turno === "O" ? r.p > migliore.p : r.p < migliore.p) migliore = { p: r.p, i };
+    });
+    return migliore;
+  }
+  function mossaComputer() {
+    const libere = campo.map((v, i) => v ? null : i).filter((i) => i !== null);
+    // Ogni tanto sbaglia apposta, altrimenti non si vincerebbe mai
+    const i = Math.random() < 0.25 ? libere[Math.floor(Math.random() * libere.length)] : minimax(campo, "O").i;
+    campo[i] = "O";
+  }
+  function disegnaTris() {
+    const t = $("tris");
+    t.innerHTML = "";
+    campo.forEach((v, i) => {
+      const b = document.createElement("button");
+      b.textContent = v || "";
+      b.className = v ? "segno-" + v : "";
+      b.setAttribute("aria-label", v ? v : "Casella " + (i + 1) + " libera");
+      b.disabled = !!v || finita;
+      b.addEventListener("click", () => gioca(i));
+      t.appendChild(b);
+    });
+    $("tris-v").textContent = statsTris.v;
+    $("tris-p").textContent = statsTris.p;
+    $("tris-s").textContent = statsTris.s;
+  }
+  function chiudi(w) {
+    finita = true;
+    if (w === "X") { statsTris.v++; $("tris-esito").textContent = "Hai vinto! 🎉"; }
+    else if (w === "O") { statsTris.s++; $("tris-esito").textContent = "Ha vinto il computer."; }
+    else { statsTris.p++; $("tris-esito").textContent = "Pareggio."; }
+    scrivi("joursense-tris", statsTris);
+  }
+  function gioca(i) {
+    if (finita || campo[i]) return;
+    campo[i] = "X";
+    let w = vincitore(campo);
+    if (!w) { mossaComputer(); w = vincitore(campo); }
+    if (w) chiudi(w);
+    disegnaTris();
+  }
+  function nuovaTris() { campo = Array(9).fill(null); finita = false; $("tris-esito").textContent = ""; disegnaTris(); }
+  $("tris-nuova").addEventListener("click", nuovaTris);
+  nuovaTris();
+
+  // ---------- MEMORY ----------
+  const SIMBOLI = ["☕", "🥐", "📎", "💻", "📅", "🖨️", "🔑", "🪴"];
+  let carte, girate, mosse, bloccato;
+  function nuovaMemory() {
+    carte = [...SIMBOLI, ...SIMBOLI]
+      .map((s) => ({ s, ordine: Math.random(), trovata: false }))
+      .sort((a, b) => a.ordine - b.ordine);
+    girate = []; mosse = 0; bloccato = false;
+    $("memory-esito").textContent = "";
+    disegnaMemory();
+  }
+  function disegnaMemory() {
+    const m = $("memory");
+    m.innerHTML = "";
+    carte.forEach((c, i) => {
+      const scoperta = c.trovata || girate.includes(i);
+      const b = document.createElement("button");
+      b.className = "carta" + (scoperta ? " scoperta" : "") + (c.trovata ? " trovata" : "");
+      b.textContent = scoperta ? c.s : "";
+      b.setAttribute("aria-label", scoperta ? c.s : "Carta coperta");
+      b.addEventListener("click", () => gira(i));
+      m.appendChild(b);
+    });
+    $("memory-mosse").textContent = mosse;
+    $("memory-record").textContent = leggi("joursense-memory", null) ?? "—";
+  }
+  function gira(i) {
+    if (bloccato || carte[i].trovata || girate.includes(i)) return;
+    girate.push(i);
+    if (girate.length === 2) {
+      mosse++;
+      const [a, b] = girate;
+      if (carte[a].s === carte[b].s) {
+        carte[a].trovata = carte[b].trovata = true;
+        girate = [];
+        if (carte.every((c) => c.trovata)) {
+          const rec = leggi("joursense-memory", null);
+          const nuovo = rec === null || mosse < rec;
+          if (nuovo) scrivi("joursense-memory", mosse);
+          $("memory-esito").textContent = "Completato in " + mosse + " mosse!" + (nuovo ? " Nuovo record 🏆" : "");
+        }
+      } else {
+        bloccato = true;
+        setTimeout(() => { girate = []; bloccato = false; disegnaMemory(); }, 800);
+      }
+    }
+    disegnaMemory();
+  }
+  $("memory-nuova").addEventListener("click", nuovaMemory);
+  nuovaMemory();
+
+  // ---------- SNAKE ----------
+  const tela = $("snake"), ctx = tela.getContext("2d");
+  const N = 16, L = tela.width / N;
+  let serpente, dir, prossimaDir, cibo, punti, timer = null;
+  const DIR = { su: [0, -1], giu: [0, 1], sx: [-1, 0], dx: [1, 0] };
+  $("snake-record").textContent = leggi("joursense-snake", 0);
+
+  function posizioneLibera() {
+    let p;
+    do { p = [Math.floor(Math.random() * N), Math.floor(Math.random() * N)]; }
+    while (serpente.some(([x, y]) => x === p[0] && y === p[1]));
+    return p;
+  }
+  function disegnaSnake() {
+    ctx.fillStyle = "#f3efe6"; ctx.fillRect(0, 0, tela.width, tela.height);
+    ctx.font = (L - 2) + "px serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    if (cibo) ctx.fillText("☕", cibo[0] * L + L / 2, cibo[1] * L + L / 2 + 1);
+    serpente.forEach(([x, y], i) => {
+      ctx.fillStyle = i === 0 ? "#7a2412" : "#b4381f";
+      ctx.fillRect(x * L + 1, y * L + 1, L - 2, L - 2);
+    });
+  }
+  function passo() {
+    dir = prossimaDir;
+    const [hx, hy] = serpente[0];
+    const testa = [hx + DIR[dir][0], hy + DIR[dir][1]];
+    const fuori = testa[0] < 0 || testa[1] < 0 || testa[0] >= N || testa[1] >= N;
+    if (fuori || serpente.some(([x, y]) => x === testa[0] && y === testa[1])) return fine();
+    serpente.unshift(testa);
+    if (testa[0] === cibo[0] && testa[1] === cibo[1]) {
+      punti++; $("snake-punti").textContent = punti; cibo = posizioneLibera();
+    } else serpente.pop();
+    disegnaSnake();
+  }
+  function fine() {
+    snakeFerma();
+    const rec = leggi("joursense-snake", 0);
+    if (punti > rec) { scrivi("joursense-snake", punti); $("snake-record").textContent = punti; }
+    $("snake-esito").textContent = "Game over: " + punti + " punti." + (punti > rec ? " Nuovo record 🏆" : "");
+    $("snake-via").textContent = "Rigioca";
+  }
+  snakeFerma = () => { clearInterval(timer); timer = null; };
+  function via() {
+    snakeFerma();
+    serpente = [[8, 8], [7, 8], [6, 8]]; dir = prossimaDir = "dx"; punti = 0;
+    cibo = posizioneLibera();
+    $("snake-punti").textContent = 0; $("snake-esito").textContent = "";
+    disegnaSnake();
+    timer = setInterval(passo, 130);
+    tela.focus();
+  }
+  function cambia(d) {
+    const [dx, dy] = DIR[d], [ox, oy] = DIR[dir] || [0, 0];
+    if (dx !== -ox || dy !== -oy) prossimaDir = d;   // niente inversione a U
+  }
+  document.addEventListener("keydown", (e) => {
+    if (!timer) return;
+    const tasti = { ArrowUp: "su", ArrowDown: "giu", ArrowLeft: "sx", ArrowRight: "dx" };
+    if (tasti[e.key]) { e.preventDefault(); cambia(tasti[e.key]); }
+  });
+  document.querySelectorAll(".frecce button").forEach((b) => b.addEventListener("click", () => timer && cambia(b.dataset.dir)));
+  $("snake-via").addEventListener("click", via);
+  serpente = [[8, 8], [7, 8], [6, 8]]; cibo = null; disegnaSnake();
+})();
+</script>
+{% endblock %}

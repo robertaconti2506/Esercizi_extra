@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block titolo %}Dipendente del mese · Joursense{% endblock %}
+
+{% block contenuto %}
+<section class="dipendente">
+  <h1 class="sezione">Dipendente del mese · {{ attuale.mese }}</h1>
+
+  <div class="premio">
+    <div class="ritratto" aria-hidden="true">
+      <span class="iniziali">NC</span>
+      <span class="nastro">N°1</span>
+    </div>
+    <div class="premio-testo">
+      <p class="occhiello">Il riconoscimento di {{ attuale.mese | lower }} va a</p>
+      <h2>Nicolas Cage</h2>
+      <p class="ruolo">Senior Everything · in organico da sempre</p>
+      <blockquote>{{ attuale.motivazione }}</blockquote>
+    </div>
+  </div>
+
+  <h2 class="sezione archivio-titolo">Albo d'oro</h2>
+  <p class="meta">La giuria è stata unanime anche nei mesi precedenti.</p>
+  <ol class="albo">
+    {% for m in archivio %}
+      <li>
+        <span class="albo-mese">{{ m.mese }}</span>
+        <span class="albo-nome">Nicolas Cage</span>
+        <span class="albo-motivo">{{ m.motivazione }}</span>
+      </li>
+    {% endfor %}
+  </ol>
+</section>
+{% endblock %}

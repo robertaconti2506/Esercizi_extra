@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block titolo %}Meteo · Joursense{% endblock %}
+
+{% block contenuto %}
+<section class="meteo">
+  <h1 class="sezione">Meteo</h1>
+
+  <form id="cerca" class="cerca-citta" autocomplete="off">
+    <label for="citta" class="nascosto">Città</label>
+    <input id="citta" name="citta" placeholder="Cerca una città…" value="{{ citta_predefinita }}">
+    <button type="submit" class="bottone">Cerca</button>
+  </form>
+  <p id="stato" class="meta" role="status">Carico le previsioni…</p>
+
+  <div id="oggi" class="meteo-oggi" hidden>
+    <div>
+      <p class="occhiello" id="luogo"></p>
+      <p class="temp-grande"><span id="temp"></span>°</p>
+      <p id="descrizione" class="meteo-desc"></p>
+    </div>
+    <dl class="dettagli">
+      <div><dt>Percepita</dt><dd id="percepita"></dd></div>
+      <div><dt>Umidità</dt><dd id="umidita"></dd></div>
+      <div><dt>Vento</dt><dd id="vento"></dd></div>
+      <div><dt>Pioggia oggi</dt><dd id="pioggia"></dd></div>
+    </dl>
+  </div>
+
+  <ol id="giorni" class="giorni" hidden></ol>
+
+  <p class="meta fonte">Dati: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>. Le previsioni vengono chieste direttamente dal tuo browser.</p>
+</section>
+
+<script>
+(function () {
+  // Codici meteo WMO usati da Open-Meteo -> descrizione e simbolo
+  const CODICI = {
+    0: ["Sereno", "☀️"], 1: ["Prevalentemente sereno", "🌤️"], 2: ["Parzialmente nuvoloso", "⛅"],
+    3: ["Coperto", "☁️"], 45: ["Nebbia", "🌫️"], 48: ["Nebbia con brina", "🌫️"],
+    51: ["Pioviggine leggera", "🌦️"], 53: ["Pioviggine", "🌦️"], 55: ["Pioviggine intensa", "🌧️"],
+    56: ["Pioviggine gelata", "🌧️"], 57: ["Pioviggine gelata", "🌧️"],
+    61: ["Pioggia debole", "🌦️"], 63: ["Pioggia", "🌧️"], 65: ["Pioggia forte", "🌧️"],
+    66: ["Pioggia gelata", "🌧️"], 67: ["Pioggia gelata", "🌧️"],
+    71: ["Neve debole", "🌨️"], 73: ["Neve", "🌨️"], 75: ["Neve forte", "❄️"], 77: ["Nevischio", "🌨️"],
+    80: ["Rovesci deboli", "🌦️"], 81: ["Rovesci", "🌧️"], 82: ["Rovesci violenti", "⛈️"],
+    85: ["Rovesci di neve", "🌨️"], 86: ["Rovesci di neve forti", "❄️"],
+    95: ["Temporale", "⛈️"], 96: ["Temporale con grandine", "⛈️"], 99: ["Temporale con grandine", "⛈️"],
+  };
+  const descr = (c) => CODICI[c] || ["—", "🌡️"];
+  const GIORNI = ["dom", "lun", "mar", "mer", "gio", "ven", "sab"];
+  const $ = (id) => document.getElementById(id);
+
+  async function carica(nome) {
+    $("stato").textContent = "Carico le previsioni…";
+    try {
+      const g = await fetch("https://geocoding-api.open-meteo.com/v1/search?count=1&language=it&name=" + encodeURIComponent(nome));
+      const luoghi = (await g.json()).results;
+      if (!luoghi || !luoghi.length) {
+        $("stato").textContent = "Non ho trovato \"" + nome + "\". Prova con un'altra città.";
+        return;
+      }
+      const l = luoghi[0];
+      const url = "https://api.open-meteo.com/v1/forecast?latitude=" + l.latitude + "&longitude=" + l.longitude +
+        "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m" +
+        "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max" +
+        "&timezone=auto&forecast_days=7";
+      const d = await (await fetch(url)).json();
+
+      const c = d.current;
+      const [testo, icona] = descr(c.weather_code);
+      $("luogo").textContent = l.name + (l.admin1 ? ", " + l.admin1 : "");
+      $("temp").textContent = Math.round(c.temperature_2m);
+      $("descrizione").textContent = icona + " " + testo;
+      $("percepita").textContent = Math.round(c.apparent_temperature) + "°";
+      $("umidita").textContent = c.relative_humidity_2m + "%";
+      $("vento").textContent = Math.round(c.wind_speed_10m) + " km/h";
+      $("pioggia").textContent = (d.daily.precipitation_probability_max[0] ?? "—") + "%";
+
+      const lista = $("giorni");
+      lista.innerHTML = "";
+      d.daily.time.forEach((giorno, i) => {
+        const [t, ic] = descr(d.daily.weather_code[i]);
+        const data = new Date(giorno + "T12:00:00");
+        const li = document.createElement("li");
+        li.innerHTML =
+          '<span class="g-nome"></span><span class="g-icona" aria-hidden="true"></span>' +
+          '<span class="g-max"></span><span class="g-min"></span>';
+        li.querySelector(".g-nome").textContent = i === 0 ? "Oggi" : GIORNI[data.getDay()] + " " + data.getDate();
+        li.querySelector(".g-icona").textContent = ic;
+        li.title = t;
+        li.querySelector(".g-max").textContent = Math.round(d.daily.temperature_2m_max[i]) + "°";
+        li.querySelector(".g-min").textContent = Math.round(d.daily.temperature_2m_min[i]) + "°";
+        lista.appendChild(li);
+      });
+
+      $("oggi").hidden = false;
+      lista.hidden = false;
+      $("stato").textContent = "";
+      try { localStorage.setItem("joursense-citta", nome); } catch (e) {}
+    } catch (e) {
+      $("stato").textContent = "Il servizio meteo non risponde. Riprova tra poco.";
+    }
+  }
+
+  $("cerca").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const nome = $("citta").value.trim();
+    if (nome) carica(nome);
+  });
+
+  let iniziale = $("citta").value;
+  try { iniziale = localStorage.getItem("joursense-citta") || iniziale; } catch (e) {}
+  $("citta").value = iniziale;
+  carica(iniziale);
+})();
+</script>
+{% endblock %}
