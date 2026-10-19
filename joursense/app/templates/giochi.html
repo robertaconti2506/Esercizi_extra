@@ -5,12 +5,15 @@
 {% block contenuto %}
 <section class="giochi">
   <h1 class="sezione">Pausa caffè</h1>
-  <p class="meta">Tre minigiochi per la pausa. I record restano salvati sul tuo browser.</p>
+  <p class="meta">Minigiochi per la pausa. I record di Tris e Memory restano salvati sul tuo browser.</p>
 
   <div class="schede" role="tablist">
     <button role="tab" class="scheda attiva" data-gioco="tris" aria-selected="true">Tris</button>
     <button role="tab" class="scheda" data-gioco="memory" aria-selected="false">Memory</button>
-    <button role="tab" class="scheda" data-gioco="snake" aria-selected="false">Snake</button>
+    {% if snake_url %}
+    <a class="scheda scheda-link" href="{{ snake_url }}" target="_blank" rel="noopener"
+       title="Apre lo Snake dei colleghi in una nuova scheda">Snake <span aria-hidden="true">↗</span></a>
+    {% endif %}
   </div>
 
   <!-- TRIS -->
@@ -31,20 +34,6 @@
     <button class="bottone" id="memory-nuova">Mescola</button>
   </div>
 
-  <!-- SNAKE -->
-  <div class="gioco" id="gioco-snake" hidden>
-    <p class="istruzioni">Usa le frecce della tastiera (o i pulsanti) e mangia i chicchi di caffè.</p>
-    <canvas id="snake" width="320" height="320" aria-label="Campo di gioco di Snake"></canvas>
-    <p class="esito" id="snake-esito" role="status"></p>
-    <p class="punteggio">Punti <strong id="snake-punti">0</strong> · Record <strong id="snake-record">0</strong></p>
-    <div class="frecce">
-      <button data-dir="su" aria-label="Su">▲</button>
-      <button data-dir="sx" aria-label="Sinistra">◀</button>
-      <button data-dir="giu" aria-label="Giù">▼</button>
-      <button data-dir="dx" aria-label="Destra">▶</button>
-    </div>
-    <button class="bottone" id="snake-via">Gioca</button>
-  </div>
 </section>
 
 <script>
@@ -54,15 +43,13 @@
   const scrivi = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
   // ---------- Schede ----------
-  let snakeFerma = () => {};
-  document.querySelectorAll(".scheda").forEach((b) => {
+  document.querySelectorAll("button.scheda").forEach((b) => {
     b.addEventListener("click", () => {
-      document.querySelectorAll(".scheda").forEach((x) => {
+      document.querySelectorAll("button.scheda").forEach((x) => {
         x.classList.toggle("attiva", x === b);
         x.setAttribute("aria-selected", x === b);
       });
       document.querySelectorAll(".gioco").forEach((g) => { g.hidden = g.id !== "gioco-" + b.dataset.gioco; });
-      if (b.dataset.gioco !== "snake") snakeFerma();
     });
   });
 
@@ -183,69 +170,6 @@
   $("memory-nuova").addEventListener("click", nuovaMemory);
   nuovaMemory();
 
-  // ---------- SNAKE ----------
-  const tela = $("snake"), ctx = tela.getContext("2d");
-  const N = 16, L = tela.width / N;
-  let serpente, dir, prossimaDir, cibo, punti, timer = null;
-  const DIR = { su: [0, -1], giu: [0, 1], sx: [-1, 0], dx: [1, 0] };
-  $("snake-record").textContent = leggi("joursense-snake", 0);
-
-  function posizioneLibera() {
-    let p;
-    do { p = [Math.floor(Math.random() * N), Math.floor(Math.random() * N)]; }
-    while (serpente.some(([x, y]) => x === p[0] && y === p[1]));
-    return p;
-  }
-  function disegnaSnake() {
-    ctx.fillStyle = "#f3efe6"; ctx.fillRect(0, 0, tela.width, tela.height);
-    ctx.font = (L - 2) + "px serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    if (cibo) ctx.fillText("☕", cibo[0] * L + L / 2, cibo[1] * L + L / 2 + 1);
-    serpente.forEach(([x, y], i) => {
-      ctx.fillStyle = i === 0 ? "#7a2412" : "#b4381f";
-      ctx.fillRect(x * L + 1, y * L + 1, L - 2, L - 2);
-    });
-  }
-  function passo() {
-    dir = prossimaDir;
-    const [hx, hy] = serpente[0];
-    const testa = [hx + DIR[dir][0], hy + DIR[dir][1]];
-    const fuori = testa[0] < 0 || testa[1] < 0 || testa[0] >= N || testa[1] >= N;
-    if (fuori || serpente.some(([x, y]) => x === testa[0] && y === testa[1])) return fine();
-    serpente.unshift(testa);
-    if (testa[0] === cibo[0] && testa[1] === cibo[1]) {
-      punti++; $("snake-punti").textContent = punti; cibo = posizioneLibera();
-    } else serpente.pop();
-    disegnaSnake();
-  }
-  function fine() {
-    snakeFerma();
-    const rec = leggi("joursense-snake", 0);
-    if (punti > rec) { scrivi("joursense-snake", punti); $("snake-record").textContent = punti; }
-    $("snake-esito").textContent = "Game over: " + punti + " punti." + (punti > rec ? " Nuovo record 🏆" : "");
-    $("snake-via").textContent = "Rigioca";
-  }
-  snakeFerma = () => { clearInterval(timer); timer = null; };
-  function via() {
-    snakeFerma();
-    serpente = [[8, 8], [7, 8], [6, 8]]; dir = prossimaDir = "dx"; punti = 0;
-    cibo = posizioneLibera();
-    $("snake-punti").textContent = 0; $("snake-esito").textContent = "";
-    disegnaSnake();
-    timer = setInterval(passo, 130);
-    tela.focus();
-  }
-  function cambia(d) {
-    const [dx, dy] = DIR[d], [ox, oy] = DIR[dir] || [0, 0];
-    if (dx !== -ox || dy !== -oy) prossimaDir = d;   // niente inversione a U
-  }
-  document.addEventListener("keydown", (e) => {
-    if (!timer) return;
-    const tasti = { ArrowUp: "su", ArrowDown: "giu", ArrowLeft: "sx", ArrowRight: "dx" };
-    if (tasti[e.key]) { e.preventDefault(); cambia(tasti[e.key]); }
-  });
-  document.querySelectorAll(".frecce button").forEach((b) => b.addEventListener("click", () => timer && cambia(b.dataset.dir)));
-  $("snake-via").addEventListener("click", via);
-  serpente = [[8, 8], [7, 8], [6, 8]]; cibo = null; disegnaSnake();
 })();
 </script>
 {% endblock %}

@@ -173,6 +173,8 @@ button.link {
 /* Giochi */
 .schede { display: flex; gap: 6px; margin: 20px 0 24px; border-bottom: 1px solid var(--linea); }
 .scheda { background: none; border: 0; border-bottom: 3px solid transparent; padding: 8px 14px; font: inherit; color: var(--tenue); cursor: pointer; margin-bottom: -1px; }
+.scheda-link { text-decoration: none; }
+.scheda-link:hover { color: var(--inchiostro); }
 .scheda.attiva { color: var(--inchiostro); border-bottom-color: var(--accento); font-weight: 600; }
 .gioco { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
 .istruzioni { margin: 0; color: var(--tenue); }
@@ -190,14 +192,6 @@ button.link {
 .carta { width: 72px; height: 72px; border-radius: 8px; border: 1px solid #8f2c18; background: var(--accento); font-size: 2rem; cursor: pointer; }
 .carta.scoperta { background: #fff; border-color: var(--linea); }
 .carta.trovata { background: #f0ebdf; opacity: .75; cursor: default; }
-
-#snake { border: 1px solid var(--linea); border-radius: 8px; max-width: 100%; }
-.frecce { display: grid; grid-template-columns: repeat(3, 48px); grid-template-rows: repeat(2, 44px); gap: 4px; }
-.frecce button { font-size: 1.1rem; border: 1px solid var(--linea); background: #fff; border-radius: 6px; cursor: pointer; }
-.frecce [data-dir="su"] { grid-column: 2; }
-.frecce [data-dir="sx"] { grid-column: 1; grid-row: 2; }
-.frecce [data-dir="giu"] { grid-column: 2; grid-row: 2; }
-.frecce [data-dir="dx"] { grid-column: 3; grid-row: 2; }
 
 /* Testata con piu' voci: va a capo bene sugli schermi stretti */
 nav { flex-wrap: wrap; row-gap: 8px; }

@@ -1,3 +1,4 @@
+import hashlib
 import os
 import socket
 from datetime import date
@@ -23,6 +24,13 @@ templates = Jinja2Templates(directory=BASE / "templates")
 # Nome del pod che risponde, mostrato nel pie' di pagina
 templates.env.globals["pod"] = socket.gethostname()
 
+# "Versione" del CSS: un'impronta del contenuto del file. Il template la aggiunge
+# all'indirizzo (style.css?v=...), cosi' quando il CSS cambia cambia anche l'indirizzo
+# e i browser non usano piu' la vecchia copia salvata in cache.
+templates.env.globals["css_versione"] = hashlib.md5(
+    (BASE / "static" / "style.css").read_bytes()
+).hexdigest()[:8]
+
 
 NOMI_MESI = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio",
              "agosto", "settembre", "ottobre", "novembre", "dicembre"]
@@ -36,6 +44,13 @@ templates.env.filters["data"] = _formatta_data
 
 # Citta' mostrata di default nella pagina meteo (configurabile dal Deployment)
 CITTA_METEO = os.getenv("CITTA_METEO", "Roma")
+
+# Lo Snake e' quello dei colleghi (progetto dev-snake sullo stesso cluster).
+# Se la variabile e' impostata ma vuota, la scheda Snake non compare.
+SNAKE_URL = os.getenv(
+    "SNAKE_URL",
+    "https://route-frontend-dev-snake.apps.openshift-ai-lab01.ocp-ai.corp.sourcesense.com/",
+).strip()
 
 # Il dipendente del mese e' sempre lui. Cambia solo la motivazione.
 MOTIVAZIONI_CAGE = [
@@ -306,7 +321,7 @@ def elimina_articolo(articolo_id: int, utente: Utente = Depends(utente_loggato))
 
 @app.get("/giochi")
 def giochi(request: Request, utente: Utente = Depends(utente_loggato)):
-    return pagina(request, "giochi.html")
+    return pagina(request, "giochi.html", {"snake_url": SNAKE_URL})
 
 
 @app.get("/meteo")
