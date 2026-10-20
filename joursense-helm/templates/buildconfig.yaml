@@ -1,0 +1,32 @@
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: {{ .Values.app.name }}
+  annotations:
+    app.openshift.io/vcs-uri: {{ .Values.build.gitUri }}
+  labels:
+    app: {{ .Values.app.name }}
+    app.kubernetes.io/component: {{ .Values.app.name }}
+    app.kubernetes.io/instance: {{ .Values.app.name }}
+    app.kubernetes.io/name: {{ .Values.app.name }}
+    app.kubernetes.io/part-of: {{ .Values.app.name }}
+spec:
+  output:
+    to:
+      kind: ImageStreamTag
+      name: {{ .Values.app.name }}:{{ .Values.app.image.tag }}
+  runPolicy: Serial
+  source:
+    type: Git
+    contextDir: {{ .Values.build.contextDir }}
+    git:
+      uri: {{ .Values.build.gitUri }}
+      {{- if .Values.build.gitRef }}
+      ref: {{ .Values.build.gitRef }}
+      {{- end }}
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: {{ .Values.build.dockerfilePath }}
+  triggers:
+  - type: ConfigChange

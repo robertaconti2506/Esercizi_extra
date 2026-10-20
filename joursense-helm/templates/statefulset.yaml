@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.postgres.name }}
+spec:
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.postgres.label }}
+  serviceName: {{ .Values.postgres.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.postgres.label }}
+    spec:
+      containers:
+      - name: {{ .Values.postgres.name }}
+        image: {{ .Values.postgres.image }}
+        imagePullPolicy: {{ .Values.postgres.pullPolicy }}
+        envFrom:
+        - secretRef:
+            name: {{ .Values.postgres.secretName }}
+        ports:
+        - containerPort: {{ .Values.postgres.port }}
+          name: {{ .Values.postgres.name }}
+          protocol: TCP
+        livenessProbe:
+          tcpSocket:
+            port: {{ .Values.postgres.port }}
+          initialDelaySeconds: 30
+          periodSeconds: 20
+          timeoutSeconds: 1
+          failureThreshold: 3
+        readinessProbe:
+          tcpSocket:
+            port: {{ .Values.postgres.port }}
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 1
+          failureThreshold: 3
+        resources:
+          limits:
+            cpu: {{ .Values.postgres.resources.limits.cpu }}
+            memory: {{ .Values.postgres.resources.limits.memory }}
+          requests:
+            cpu: {{ .Values.postgres.resources.requests.cpu }}
+            memory: {{ .Values.postgres.resources.requests.memory }}
+        volumeMounts:
+        - mountPath: /var/lib/pgsql/data
+          name: postgres-volume
+      terminationGracePeriodSeconds: 10
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-volume
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: {{ .Values.postgres.storage }}

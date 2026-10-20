@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.app.name }}
+  annotations:
+    alpha.image.policy.openshift.io/resolve-names: '*'
+    app.openshift.io/route-disabled: "false"
+    app.openshift.io/vcs-uri: {{ .Values.build.gitUri }}
+    image.openshift.io/triggers: '[{"from":{"kind":"ImageStreamTag","name":"{{ .Values.app.name }}:{{ .Values.app.image.tag }}","namespace":"{{ .Release.Namespace }}"},"fieldPath":"spec.template.spec.containers[?(@.name==\"{{ .Values.app.name }}\")].image","paused":false}]'
+  labels:
+    app: {{ .Values.app.name }}
+    app.kubernetes.io/component: {{ .Values.app.name }}
+    app.kubernetes.io/instance: {{ .Values.app.name }}
+    app.kubernetes.io/name: {{ .Values.app.name }}
+    app.kubernetes.io/part-of: {{ .Values.app.name }}
+spec:
+  replicas: {{ .Values.app.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.app.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.app.name }}
+        deployment: {{ .Values.app.name }}
+    spec:
+      containers:
+      - name: {{ .Values.app.name }}
+        image: {{ .Values.app.image.registry }}/{{ .Release.Namespace }}/{{ .Values.app.name }}:{{ .Values.app.image.tag }}
+        imagePullPolicy: {{ .Values.app.image.pullPolicy }}
+        env:
+        - name: DB_HOST
+          value: {{ .Values.postgres.name | quote }}
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.postgres.secretName }}
+              key: POSTGRESQL_DATABASE
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.postgres.secretName }}
+              key: POSTGRESQL_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.postgres.secretName }}
+              key: POSTGRESQL_PASSWORD
+        - name: ADMIN_EMAILS
+          value: {{ .Values.app.adminEmails | quote }}
+        ports:
+        - containerPort: {{ .Values.app.port }}
+          protocol: TCP
+        resources:
+          limits:
+            cpu: {{ .Values.app.resources.limits.cpu }}
+            memory: {{ .Values.app.resources.limits.memory }}
+          requests:
+            cpu: {{ .Values.app.resources.requests.cpu }}
+            memory: {{ .Values.app.resources.requests.memory }}

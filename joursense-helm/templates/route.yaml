@@ -1,0 +1,22 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ .Values.app.name }}
+  annotations:
+    app.openshift.io/vcs-uri: {{ .Values.build.gitUri }}
+  labels:
+    app: {{ .Values.app.name }}
+    app.kubernetes.io/component: {{ .Values.app.name }}
+    app.kubernetes.io/instance: {{ .Values.app.name }}
+    app.kubernetes.io/name: {{ .Values.app.name }}
+    app.kubernetes.io/part-of: {{ .Values.app.name }}
+spec:
+  host: {{ .Values.route.host }}
+  port:
+    targetPort: {{ .Values.app.port }}-tcp
+  tls:
+    termination: {{ .Values.route.tls.termination }}
+    insecureEdgeTerminationPolicy: {{ .Values.route.tls.insecureEdgeTerminationPolicy }}
+  to:
+    kind: Service
+    name: {{ .Values.app.name }}

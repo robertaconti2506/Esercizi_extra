@@ -1,0 +1,48 @@
+app:
+  name: joursense
+  replicas: 1
+  port: 8080
+  adminEmails: "alessandro.segato@gmail.com,roberta.conti@gmail.com,roberta.conti.sou@gmail.com"
+  image:
+    registry: image-registry.openshift-image-registry.svc:5000
+    tag: latest
+    pullPolicy: Always
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+postgres:
+  name: postgres
+  label: database
+  port: 5432
+  secretName: postgres-credentials
+  image: registry.redhat.io/rhel9/postgresql-16:latest
+  storage: 1Gi
+  database: giornalino
+  user: giornalino
+  password: ""
+  pullPolicy: Always
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+build:
+  gitUri: https://github.com/robertaconti2506/Esercizi_extra.git
+  gitRef: ""
+  contextDir: /joursense
+  dockerfilePath: Containerfile
+
+route:
+  host: ""
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+
