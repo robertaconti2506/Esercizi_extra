@@ -1,8 +1,0 @@
----
-- name: Create Vagrant VMS
-  community.vagrant.vagrant:
-    instances: "{{ vagrant_vms }}"
-    default_box: "{{ vagrant_box }}"
-    provider_name: "{{ vagrant_provider }}"
-    state: up
-    workdir: "{{ role_path }}"
