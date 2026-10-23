@@ -46,3 +46,8 @@ route:
     termination: edge
     insecureEdgeTerminationPolicy: Redirect
 
+tekton:
+  egress:
+    enabled: true
+    podLabels:
+      app.kubernetes.io/managed-by: tekton-pipelines

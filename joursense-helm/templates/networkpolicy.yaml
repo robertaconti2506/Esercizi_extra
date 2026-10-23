@@ -101,3 +101,19 @@ spec:
   - Egress
   egress:
   - {}
+---
+{{- if .Values.tekton.egress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-tekton-egress
+spec:
+  podSelector:
+    matchLabels:
+      {{- toYaml .Values.tekton.egress.podLabels | nindent 6 }}
+  policyTypes:
+  - Egress
+  egress:
+  - {}
+{{- end }}
