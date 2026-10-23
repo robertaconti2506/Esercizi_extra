@@ -1,0 +1,4 @@
+# Dipendenze per i test
+-r requirements.txt
+pytest
+httpx
