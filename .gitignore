@@ -15,3 +15,4 @@ Esercizio2/roles/vagrant/vagrant.out
 *.key
 id_rsa
 id_ed25519
+.vagrant/
