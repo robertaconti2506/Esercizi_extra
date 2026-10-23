@@ -35,6 +35,7 @@ postgres:
       memory: 256Mi
 
 build:
+  enabled: false
   gitUri: https://github.com/robertaconti2506/Esercizi_extra.git
   gitRef: ""
   contextDir: /joursense

@@ -1,3 +1,4 @@
+{{- if .Values.build.enabled }}
 apiVersion: build.openshift.io/v1
 kind: BuildConfig
 metadata:
@@ -30,3 +31,4 @@ spec:
       dockerfilePath: {{ .Values.build.dockerfilePath }}
   triggers:
   - type: ConfigChange
+{{- end }}
