@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smee-client
+  namespace: joursense-helm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: smee-client
+  template:
+    metadata:
+      labels:
+        app: smee-client
+    spec:
+      containers:
+        - name: smee
+          image: docker.io/deltaprojects/smee-client:latest
+          args:
+            - "-u"
+            - "https://smee.io/Vgbaw3aL9x5fbK4y"
+            - "-t"
+            - "http://el-github-listener.joursense-helm.svc.cluster.local:8080"
