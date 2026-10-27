@@ -1,0 +1,100 @@
+# Pipeline di joursense: clone -> test -> build immagine -> helm upgrade
+# Ogni Task parte solo se la precedente è riuscita (runAfter)
+
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: joursense-pipeline
+spec:
+  params:
+    - name: git-url             # repo da scaricare
+      type: string
+    - name: git-revision        # branch
+      type: string
+      default: main
+    - name: image               # immagine sul registry interno, senza tag
+      type: string
+    - name: release-name        # release helm
+      type: string
+      default: joursense
+    - name: chart-path          # cartella del chart nella repo
+      type: string
+      default: joursense-helm
+
+  workspaces:
+    - name: source              # volume condiviso tra tutte le Task
+                                # fornito da PipelineRun, volumeClaimTemplate
+
+  tasks:
+    # 1. Clone della repo: Task ufficiale di OpenShift Pipelines
+    - name: fetch-source
+      taskRef:
+        resolver: cluster       # la task viene cercata dentro il cluster
+        params:
+          - name: kind
+            value: task
+          - name: name
+            value: git-clone-1-24-0
+          - name: namespace
+            value: openshift-pipelines
+      params:
+        - name: URL             # repo da clonare
+          value: $(params.git-url)
+        - name: REVISION        # branch
+          value: $(params.git-revision)
+      workspaces:
+        - name: output
+          workspace: source
+      # result: COMMIT, lo SHA del commit scaricato (utilizzato dopo nella build e nel deploy)
+      # $(tasks.fetch-source.results.COMMIT)
+
+    # 2. Test: se fallisce, build e deploy non partono
+    - name: test               
+      runAfter:
+        - fetch-source
+      taskRef:
+        name: run-tests         
+      workspaces:
+        - name: source
+          workspace: source
+
+    # 3. Build e push dell'immagine, con tag = SHA del commit clonato
+    - name: build-push
+      runAfter:
+        - test                  # parte solo se il test in joursense/test/ è riuscito 
+      taskRef:
+        resolver: cluster
+        params:
+          - name: kind
+            value: task
+          - name: name
+            value: buildah-1-24-0
+          - name: namespace
+            value: openshift-pipelines
+      params:
+        - name: IMAGE
+          value: $(params.image):$(tasks.fetch-source.results.COMMIT)
+        - name: DOCKERFILE
+          value: ./joursense/Containerfile
+        - name: CONTEXT
+          value: ./joursense
+      workspaces:
+        - name: source
+          workspace: source
+
+    # 4. Deploy con Helm dell'immagine appena buildata
+    - name: deploy
+      runAfter:
+        - build-push            # parte solo se la build è riuscita
+      taskRef:
+        name: helm-upgrade      # Task nel nostro namespace,task-helm-upgrade-tekton.yaml
+      params:
+        - name: release-name
+          value: $(params.release-name)                   # joursense
+        - name: chart-path
+          value: $(params.chart-path)                     # joursense-helm
+        - name: image-tag
+          value: $(tasks.fetch-source.results.COMMIT)     # SHA del commit
+      workspaces:
+        - name: source
+          workspace: source

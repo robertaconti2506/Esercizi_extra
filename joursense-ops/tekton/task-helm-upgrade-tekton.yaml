@@ -1,0 +1,38 @@
+# Task che fa il deploy di joursense con helm upgrade,
+# usando l'immagine appena buildata (tag = SHA del commit)
+
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: helm-upgrade            
+spec:
+  params:
+    - name: release-name        # nome del release Helm (joursense)
+      type: string
+    - name: chart-path          # cartella del chart nella repo (joursense-helm)
+      type: string
+    - name: image-tag           # tag dell'immagine da deployare
+      type: string
+  workspaces:
+    - name: source              # qui c'è la repo scaricata dal passo clone
+  steps:
+    - name: upgrade
+      # Immagine con dentro il comando helm: usa la stessa versione che hai sul Mac
+      image: docker.io/alpine/helm:4.3.1
+      workingDir: $(workspaces.source.path)
+      env:
+        - name: HOME            # OpenShift usa utenti casuali: serve una home scrivibile
+          value: /tmp
+        - name: PG_PASSWORD     # password di Postgres presa dal Secret esistente:
+          valueFrom:            # non compare nei parametri né nei log della pipeline
+            secretKeyRef:
+              name: postgres-credentials
+              key: POSTGRESQL_PASSWORD
+      script: |
+        #!/bin/sh
+        set -eu                 # se un comando fallisce, lo step si ferma con errore
+        helm upgrade --install "$(params.release-name)" "$(params.chart-path)" \
+          --namespace "$(context.taskRun.namespace)" \
+          --set app.image.tag="$(params.image-tag)" \
+          --set postgres.password="$PG_PASSWORD" \
+          --wait --timeout 5m   # aspetta che il nuovo pod sia pronto

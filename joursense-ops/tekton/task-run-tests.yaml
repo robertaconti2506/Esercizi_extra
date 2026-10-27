@@ -1,0 +1,26 @@
+# Task che esegue i test pytest di joursense 
+# Se un test fallisce, la Task fallisce e la pipeline si ferma
+
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: run-tests               # la Pipeline la richiama con questo nome
+spec:
+  workspaces:
+    - name: source              # qui c'è la repo scaricata dal passo clone
+  steps:
+    - name: pytest
+      # Stessa immagine base del Containerfile: stesso Python dell'app
+      image: registry.access.redhat.com/ubi9/python-312
+      # Lavora nella cartella joursense/, dove ci sono app/ e tests/
+      workingDir: $(workspaces.source.path)/joursense
+      env:
+        - name: HOME            # OpenShift usa utenti casuali: serve una home scrivibile
+          value: /tmp
+      script: |
+        #!/bin/sh
+        set -eu                 # se un comando fallisce, lo step si ferma con errore
+        # Installa le dipendenze dell'app + pytest e httpx
+        pip install --no-cache-dir -r requirements-dev.txt
+        # Esegue i test della cartella tests/
+        pytest -v
