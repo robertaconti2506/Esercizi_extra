@@ -14,6 +14,12 @@ app:
     requests:
       cpu: 100m
       memory: 256Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 50
+    scaleDownStabilizationSeconds: 60
 
 postgres:
   name: postgres
