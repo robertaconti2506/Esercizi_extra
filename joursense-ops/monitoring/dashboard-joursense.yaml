@@ -4,8 +4,8 @@ metadata:
   name: dashboard-joursense
   namespace: openshift-config-managed
   labels:
-    console.openshift.io/dashboard: "true"   
-    console.openshift.io/odc-dashboard: "true" 
+    console.openshift.io/dashboard: "true"
+    console.openshift.io/odc-dashboard: "true"
 data:
   joursense.json: |-
     {
@@ -19,14 +19,14 @@ data:
           "title": "Disponibilita'",
           "panels": [
             {
-              "id": 1, "type": "singlestat", "span": 4,
+              "id": 1, "type": "graph", "span": 4,
               "title": "Pod app ready",
-              "targets": [{ "expr": "sum(kube_pod_status_ready{namespace=\"joursense-helm\", condition=\"true\", pod=~\"joursense-[a-z0-9]+-[a-z0-9]+\"})" }]
+              "targets": [{ "expr": "sum(kube_pod_status_ready{namespace=\"joursense-helm\", condition=\"true\", pod=~\"joursense-[a-z0-9]+-[a-z0-9]+\"})", "legendFormat": "ready" }]
             },
             {
-              "id": 2, "type": "singlestat", "span": 4,
+              "id": 2, "type": "graph", "span": 4,
               "title": "Pod non ready (namespace)",
-              "targets": [{ "expr": "sum((kube_pod_status_ready{namespace=\"joursense-helm\", condition=\"false\"} == 1) and on (namespace, pod) (kube_pod_status_phase{namespace=\"joursense-helm\", phase=~\"Running|Pending\"} == 1)) or vector(0)" }]
+              "targets": [{ "expr": "sum((kube_pod_status_ready{namespace=\"joursense-helm\", condition=\"false\"} == 1) and on (namespace, pod) (kube_pod_status_phase{namespace=\"joursense-helm\", phase=~\"Running|Pending\"} == 1)) or vector(0)", "legendFormat": "non ready" }]
             },
             {
               "id": 3, "type": "graph", "span": 4,
