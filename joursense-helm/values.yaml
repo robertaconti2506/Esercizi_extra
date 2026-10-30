@@ -2,7 +2,6 @@ app:
   name: joursense
   replicas: 1
   port: 8080
-  adminEmails: "alessandro.segato@gmail.com,roberta.conti@gmail.com,roberta.conti.sou@gmail.com"
   image:
     registry: image-registry.openshift-image-registry.svc:5000
     tag: latest
@@ -84,6 +83,7 @@ backup:
     successfulJobsHistoryLimit: 3
     failedJobsHistoryLimit: 3
     mountPath: /backup
+
 monitoring:
   enabled: true
   podNotReadyFor: 2m

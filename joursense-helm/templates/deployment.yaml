@@ -49,7 +49,11 @@ spec:
               name: {{ .Values.postgres.secretName }}
               key: POSTGRESQL_PASSWORD
         - name: ADMIN_EMAILS
-          value: {{ .Values.app.adminEmails | quote }}
+          valueFrom:
+            secretKeyRef:
+              name: joursense-admin
+              key: ADMIN_EMAILS
+              optional: true
         ports:
         - containerPort: {{ .Values.app.port }}
           protocol: TCP
