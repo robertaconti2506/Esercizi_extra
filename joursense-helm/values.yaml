@@ -52,3 +52,16 @@ tekton:
     enabled: true
     podLabels:
       app.kubernetes.io/managed-by: tekton-pipelines
+
+backup:
+  enabled: true
+  pvc:
+    name: postgres-backup
+    storage: 2Gi
+    storageClassName: ""
+  cronjob:
+    name: postgres-backup
+    schedule: "0 2 * * *"
+    successfulJobsHistoryLimit: 3
+    failedJobsHistoryLimit: 3
+    mountPath: /backup

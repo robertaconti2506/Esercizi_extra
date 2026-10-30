@@ -1,0 +1,74 @@
+{{- if .Values.backup.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Values.backup.cronjob.name }}
+  labels:
+    app: {{ .Values.app.name }}-backup
+spec:
+  schedule: {{ .Values.backup.cronjob.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: {{ .Values.backup.cronjob.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.backup.cronjob.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: {{ .Values.app.name }}-backup
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: pg-dump
+              image: {{ .Values.postgres.image }}
+              imagePullPolicy: {{ .Values.postgres.pullPolicy }}
+              env:
+                - name: PGHOST
+                  value: {{ .Values.postgres.name }}
+                - name: PGPORT
+                  value: {{ .Values.postgres.port | quote }}
+                - name: PGUSER
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Values.postgres.secretName }}
+                      key: POSTGRESQL_USER
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Values.postgres.secretName }}
+                      key: POSTGRESQL_PASSWORD
+                - name: PGDATABASE
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Values.postgres.secretName }}
+                      key: POSTGRESQL_DATABASE
+                - name: BACKUP_DIR
+                  value: {{ .Values.backup.cronjob.mountPath }}
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -euo pipefail
+                  file="${BACKUP_DIR}/${PGDATABASE}-$(date +%Y%m%d-%H%M%S).dump"
+                  echo "Inizio backup di ${PGDATABASE} su ${PGHOST}:${PGPORT}"
+                  pg_dump --format=custom --file="${file}.tmp"
+                  mv "${file}.tmp" "${file}"
+                  test -s "${file}"
+                  ls -lh "${file}"
+                  echo "Backup completato"
+              resources:
+                limits:
+                  cpu: 200m
+                  memory: 256Mi
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+              volumeMounts:
+                - name: backup
+                  mountPath: {{ .Values.backup.cronjob.mountPath }}
+          volumes:
+            - name: backup
+              persistentVolumeClaim:
+                claimName: {{ .Values.backup.pvc.name }}
+{{- end }}
