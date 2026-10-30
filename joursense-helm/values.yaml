@@ -58,3 +58,7 @@ tekton:
     enabled: true
     podLabels:
       app.kubernetes.io/managed-by: tekton-pipelines
+
+monitoring:
+  enabled: true
+  podNotReadyFor: 2m
