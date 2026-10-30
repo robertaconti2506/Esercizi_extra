@@ -51,6 +51,22 @@ spec:
         ports:
         - containerPort: {{ .Values.app.port }}
           protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.app.probes.liveness.path }}
+            port: {{ .Values.app.port }}
+          initialDelaySeconds: {{ .Values.app.probes.liveness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.app.probes.liveness.periodSeconds }}
+          timeoutSeconds: {{ .Values.app.probes.liveness.timeoutSeconds }}
+          failureThreshold: {{ .Values.app.probes.liveness.failureThreshold }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.app.probes.readiness.path }}
+            port: {{ .Values.app.port }}
+          initialDelaySeconds: {{ .Values.app.probes.readiness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.app.probes.readiness.periodSeconds }}
+          timeoutSeconds: {{ .Values.app.probes.readiness.timeoutSeconds }}
+          failureThreshold: {{ .Values.app.probes.readiness.failureThreshold }}
         resources:
           limits:
             cpu: {{ .Values.app.resources.limits.cpu }}
