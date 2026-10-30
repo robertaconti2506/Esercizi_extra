@@ -1,0 +1,24 @@
+# Pod di prova per l'alert PodNonReady: gira ma non diventa mai ready.
+# Cancellarlo a fine test.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-non-ready
+  labels:
+    app: test-non-ready
+spec:
+  containers:
+  - name: test
+    image: registry.access.redhat.com/ubi9/ubi-minimal
+    command: ["sleep", "infinity"]
+    readinessProbe:
+      exec:
+        command: ["false"]
+      periodSeconds: 10
+    resources:
+      requests:
+        cpu: 10m
+        memory: 16Mi
+      limits:
+        cpu: 50m
+        memory: 32Mi

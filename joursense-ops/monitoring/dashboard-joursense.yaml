@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard-joursense
+  namespace: openshift-config-managed
+  labels:
+    console.openshift.io/dashboard: "true"
+    console.openshift.io/odc-dashboard: "true"
+data:
+  joursense.json: |-
+    {
+      "title": "joursense",
+      "uid": "joursense",
+      "tags": ["joursense"],
+      "time": { "from": "now-1h", "to": "now" },
+      "refresh": "30s",
+      "rows": [
+        {
+          "title": "Disponibilita'",
+          "panels": [
+            {
+              "id": 1, "type": "graph", "span": 4,
+              "title": "Pod app ready",
+              "targets": [{ "expr": "sum(kube_pod_status_ready{namespace=\"joursense-helm\", condition=\"true\", pod=~\"joursense-[a-z0-9]+-[a-z0-9]+\"})", "legendFormat": "ready" }]
+            },
+            {
+              "id": 2, "type": "graph", "span": 4,
+              "title": "Pod non ready (namespace)",
+              "targets": [{ "expr": "sum((kube_pod_status_ready{namespace=\"joursense-helm\", condition=\"false\"} == 1) and on (namespace, pod) (kube_pod_status_phase{namespace=\"joursense-helm\", phase=~\"Running|Pending\"} == 1)) or vector(0)", "legendFormat": "non ready" }]
+            },
+            {
+              "id": 3, "type": "graph", "span": 4,
+              "title": "Repliche HPA",
+              "targets": [
+                { "expr": "kube_horizontalpodautoscaler_status_current_replicas{namespace=\"joursense-helm\", horizontalpodautoscaler=\"joursense\"}", "legendFormat": "attuali" },
+                { "expr": "kube_horizontalpodautoscaler_spec_max_replicas{namespace=\"joursense-helm\", horizontalpodautoscaler=\"joursense\"}", "legendFormat": "massimo" }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Risorse",
+          "panels": [
+            {
+              "id": 4, "type": "graph", "span": 4,
+              "title": "CPU per pod (core)",
+              "targets": [{ "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"joursense-helm\", container!=\"\", container!=\"POD\"}[5m]))", "legendFormat": "{{pod}}" }]
+            },
+            {
+              "id": 5, "type": "graph", "span": 4,
+              "title": "Memoria per pod",
+              "yaxes": [{ "format": "bytes" }, { "format": "short" }],
+              "targets": [{ "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"joursense-helm\", container!=\"\", container!=\"POD\"})", "legendFormat": "{{pod}}" }]
+            },
+            {
+              "id": 6, "type": "graph", "span": 4,
+              "title": "Restart dei container",
+              "targets": [{ "expr": "sum by (pod) (kube_pod_container_status_restarts_total{namespace=\"joursense-helm\"})", "legendFormat": "{{pod}}" }]
+            }
+          ]
+        }
+      ]
+    }
