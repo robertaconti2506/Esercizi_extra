@@ -45,6 +45,8 @@ spec:
                       key: POSTGRESQL_DATABASE
                 - name: BACKUP_DIR
                   value: {{ .Values.backup.cronjob.mountPath }}
+                - name: BACKUP_RETENTION_DAYS
+                  value: {{ .Values.backup.cronjob.retentionDays | default 4 | quote }}
               command:
                 - /bin/bash
                 - -c
@@ -57,6 +59,8 @@ spec:
                   test -s "${file}"
                   ls -lh "${file}"
                   echo "Backup completato"
+                  echo "Rimozione dei backup più vecchi di ${BACKUP_RETENTION_DAYS} giorni"
+                  find "${BACKUP_DIR}" -name "${PGDATABASE}-*.dump" -mtime +"${BACKUP_RETENTION_DAYS}" -print -delete
               resources:
                 limits:
                   cpu: 200m
