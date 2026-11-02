@@ -130,3 +130,13 @@ oc apply -f joursense-ops/monitoring/dashboard-joursense.yaml
 ```
 
 Poi ricaricare la pagina della console: l'elenco delle dashboard si carica all'apertura.
+
+### Screenshot
+
+Alert `PodNonReady` in stato Firing sul pod di test.
+
+![Alert firing](img/alert-firing.png)
+
+Dashboard `joursense` con i 6 pannelli.
+
+![Dashboard joursense](img/dashboard-joursense.png)
