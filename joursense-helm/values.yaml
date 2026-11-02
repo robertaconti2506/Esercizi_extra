@@ -83,6 +83,7 @@ backup:
     successfulJobsHistoryLimit: 3
     failedJobsHistoryLimit: 3
     mountPath: /backup
+    retentionDays: 4
 
 monitoring:
   enabled: true
