@@ -1,0 +1,12 @@
+# Attiva il monitoring dei progetti utente (user workload monitoring).
+# ATTENZIONE: se la ConfigMap esiste gia', non usare oc apply ma
+# oc -n openshift-monitoring edit configmap cluster-monitoring-config
+# e aggiungere solo la riga enableUserWorkload: true.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-monitoring-config
+  namespace: openshift-monitoring
+data:
+  config.yaml: |
+    enableUserWorkload: true

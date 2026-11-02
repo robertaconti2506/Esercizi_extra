@@ -1,0 +1,39 @@
+{{- if .Values.backup.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-backup-egress
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ .Values.app.name }}-backup
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: {{ .Values.postgres.label }}
+      ports:
+        - port: {{ .Values.postgres.port }}
+          protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-backup-to-database
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ .Values.postgres.label }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: {{ .Values.app.name }}-backup
+      ports:
+        - port: {{ .Values.postgres.port }}
+          protocol: TCP
+{{- end }}

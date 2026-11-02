@@ -14,7 +14,9 @@ metadata:
     app.kubernetes.io/name: {{ .Values.app.name }}
     app.kubernetes.io/part-of: {{ .Values.app.name }}
 spec:
+  {{- if not .Values.app.autoscaling.enabled }}
   replicas: {{ .Values.app.replicas }}
+  {{- end }}
   selector:
     matchLabels:
       app: {{ .Values.app.name }}
@@ -47,10 +49,30 @@ spec:
               name: {{ .Values.postgres.secretName }}
               key: POSTGRESQL_PASSWORD
         - name: ADMIN_EMAILS
-          value: {{ .Values.app.adminEmails | quote }}
+          valueFrom:
+            secretKeyRef:
+              name: joursense-admin
+              key: ADMIN_EMAILS
+              optional: true
         ports:
         - containerPort: {{ .Values.app.port }}
           protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.app.probes.liveness.path }}
+            port: {{ .Values.app.port }}
+          initialDelaySeconds: {{ .Values.app.probes.liveness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.app.probes.liveness.periodSeconds }}
+          timeoutSeconds: {{ .Values.app.probes.liveness.timeoutSeconds }}
+          failureThreshold: {{ .Values.app.probes.liveness.failureThreshold }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.app.probes.readiness.path }}
+            port: {{ .Values.app.port }}
+          initialDelaySeconds: {{ .Values.app.probes.readiness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.app.probes.readiness.periodSeconds }}
+          timeoutSeconds: {{ .Values.app.probes.readiness.timeoutSeconds }}
+          failureThreshold: {{ .Values.app.probes.readiness.failureThreshold }}
         resources:
           limits:
             cpu: {{ .Values.app.resources.limits.cpu }}

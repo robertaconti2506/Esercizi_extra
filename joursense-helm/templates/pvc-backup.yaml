@@ -1,0 +1,19 @@
+{{- if .Values.backup.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.backup.pvc.name }}
+  annotations:
+    helm.sh/resource-policy: keep
+  labels:
+    app: {{ .Values.app.name }}-backup
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.backup.pvc.storage }}
+  {{- with .Values.backup.pvc.storageClassName }}
+  storageClassName: {{ . }}
+  {{- end }}
+{{- end }}
