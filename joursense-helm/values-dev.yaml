@@ -1,0 +1,3 @@
+# Ambiente dev (namespace: joursense-dev)
+postgres:
+  createSecret: false
