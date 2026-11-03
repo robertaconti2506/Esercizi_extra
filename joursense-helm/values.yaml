@@ -4,6 +4,7 @@ app:
   port: 8080
   image:
     registry: image-registry.openshift-image-registry.svc:5000
+    namespace: ""
     tag: latest
     pullPolicy: Always
   resources:

@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: joursense-quota
+  namespace: joursense-dev
+spec:
+  hard:
+    limits.cpu: "2"
+    limits.memory: 2Gi
+    pods: "8"
+    persistentvolumeclaims: "2"
+    requests.storage: 5Gi
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: joursense-limits
+  namespace: joursense-dev
+spec:
+  limits:
+  - type: Container
+    default:
+      cpu: 200m
+      memory: 256Mi
+    defaultRequest:
+      cpu: 50m
+      memory: 64Mi
+    max:
+      cpu: "1"
+      memory: 1Gi
+    min:
+      cpu: 10m
+      memory: 32Mi
