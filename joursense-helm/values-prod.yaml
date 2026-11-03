@@ -1,3 +1,0 @@
-# Ambiente prod (namespace: joursense-prod) 
-postgres:
-  createSecret: false
