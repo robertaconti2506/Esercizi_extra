@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: image-updater-registry-token
+  namespace: openshift-gitops
+  annotations:
+    kubernetes.io/service-account.name: image-updater-registry
+type: kubernetes.io/service-account-token
