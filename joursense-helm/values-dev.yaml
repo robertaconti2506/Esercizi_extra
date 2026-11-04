@@ -5,22 +5,20 @@
 
 app:
   image:
-    namespace: joursense-helm      # l'immagine viene costruita solo li'
+    namespace: joursense-helm # l'immagine viene costruita solo li'
+    tag: 77213c4111c4116c29a22b365e2e192130dcae6f
   autoscaling:
-    enabled: false                 # niente HPA: una replica fissa (app.replicas: 1 di values.yaml)
-  resources:                       # meta' delle risorse di values.yaml
+    enabled: false # niente HPA: una replica fissa (app.replicas: 1 di values.yaml)
+  resources: # meta' delle risorse di values.yaml
     limits:
       cpu: 250m
       memory: 256Mi
     requests:
       cpu: 50m
       memory: 128Mi
-
 backup:
-  enabled: false                   # in dev niente CronJob ne' PVC di backup
-
+  enabled: false # in dev niente CronJob ne' PVC di backup
 monitoring:
-  enabled: false                   # niente alert in dev (e niente permesso monitoring-rules-edit)
-
+  enabled: false # niente alert in dev (e niente permesso monitoring-rules-edit)
 postgres:
-  createSecret: false              # secret postgres-credentials creato a parte, non dal chart
+  createSecret: false # secret postgres-credentials creato a parte, non dal chart
