@@ -21,8 +21,14 @@ spec:
             name: cel
           params:
             - name: filter
-              value: "body.ref == 'refs/heads/main'"
+              value: >-
+                body.ref == 'refs/heads/main' &&
+                body.commits.exists(c,
+                  c.added.exists(f, f.startsWith('joursense/')) ||
+                  c.modified.exists(f, f.startsWith('joursense/')) ||
+                  c.removed.exists(f, f.startsWith('joursense/')))
       bindings:
         - ref: github-push-binding
       template:
         ref: pipeline-template
+
