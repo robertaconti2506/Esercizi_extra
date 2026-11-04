@@ -1,0 +1,33 @@
+# Ambiente di produzione (namespace joursense-prod).
+# Contiene SOLO le differenze rispetto a values.yaml.
+# Installazione:
+# helm upgrade --install joursense ./joursense-helm -n joursense-prod -f joursense-helm/values-prod.yaml --set postgres.password=...
+
+app:
+  image:
+    namespace: joursense-helm      # l'immagine viene costruita solo li'
+  resources:                       # il doppio delle risorse di values.yaml
+    limits:
+      cpu: "1"
+      memory: 1Gi
+    requests:
+      cpu: 200m
+      memory: 512Mi
+  autoscaling:
+    minReplicas: 2                 # sempre almeno 2 pod: se uno cade, l'altro serve il traffico
+
+postgres:
+  createSecret: false              # secret postgres-credentials creato a parte, non dal chart
+  resources:
+    limits:
+      cpu: "1"
+      memory: 1Gi
+    requests:
+      cpu: 200m
+      memory: 512Mi
+
+backup:
+  pvc:
+    storage: 4Gi                   # piu' spazio per tenere piu' giorni di backup
+  cronjob:
+    retentionDays: 7              # una settimana di backup invece di 4 giorni

@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: joursense-dev
+  namespace: openshift-gitops
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/robertaconti2506/Esercizi_extra.git
+    targetRevision: 14-deploy-gestito-da-argo-cd
+    path: joursense-helm
+    helm:
+      valueFiles:
+        - values-dev.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: joursense-dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
