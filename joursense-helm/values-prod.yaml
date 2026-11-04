@@ -17,6 +17,7 @@ app:
     minReplicas: 2                 # sempre almeno 2 pod: se uno cade, l'altro serve il traffico
 
 postgres:
+  createSecret: false              # secret postgres-credentials creato a parte, non dal chart
   resources:
     limits:
       cpu: "1"

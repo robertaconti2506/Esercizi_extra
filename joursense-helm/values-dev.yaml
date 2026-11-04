@@ -21,3 +21,6 @@ backup:
 
 monitoring:
   enabled: false                   # niente alert in dev (e niente permesso monitoring-rules-edit)
+
+postgres:
+  createSecret: false              # secret postgres-credentials creato a parte, non dal chart
