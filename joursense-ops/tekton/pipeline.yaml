@@ -1,4 +1,4 @@
-# Pipeline di joursense: clone -> test -> build immagine -> helm upgrade
+# Pipeline di joursense: clone -> test -> build immagine, il deploy ora viene gestito da Argo CD (joursense-ops/argocd/)
 # Ogni Task parte solo se la precedente è riuscita (runAfter)
 
 apiVersion: tekton.dev/v1
@@ -14,12 +14,12 @@ spec:
       default: main
     - name: image               # immagine sul registry interno, senza tag
       type: string
-    - name: release-name        # release helm
-      type: string
-      default: joursense
-    - name: chart-path          # cartella del chart nella repo
-      type: string
-      default: joursense-helm
+        #    - name: release-name        # release helm
+        #      type: string
+        #      default: joursense
+        #    - name: chart-path          # cartella del chart nella repo
+        #      type: string
+        #      default: joursense-helm
 
   workspaces:
     - name: source              # volume condiviso tra tutte le Task
@@ -48,7 +48,7 @@ spec:
       # result: COMMIT, lo SHA del commit scaricato (utilizzato dopo nella build e nel deploy)
       # $(tasks.fetch-source.results.COMMIT)
 
-    # 2. Test: se fallisce, build e deploy non partono
+    # 2. Test: se fallisce, laa build non parte
     - name: test               
       runAfter:
         - fetch-source
@@ -83,18 +83,18 @@ spec:
           workspace: source
 
     # 4. Deploy con Helm dell'immagine appena buildata
-    - name: deploy
-      runAfter:
-        - build-push            # parte solo se la build è riuscita
-      taskRef:
-        name: helm-upgrade      # Task nel nostro namespace,task-helm-upgrade-tekton.yaml
-      params:
-        - name: release-name
-          value: $(params.release-name)                   # joursense
-        - name: chart-path
-          value: $(params.chart-path)                     # joursense-helm
-        - name: image-tag
-          value: $(tasks.fetch-source.results.COMMIT)     # SHA del commit
-      workspaces:
-        - name: source
-          workspace: source
+    #    - name: deploy
+    #      runAfter:
+    #        - build-push            # parte solo se la build è riuscita
+    #      taskRef:
+    #    name: helm-upgrade      # Task nel nostro namespace,task-helm-upgrade-tekton.yaml
+    #  params:
+    #    - name: release-name
+    #      value: $(params.release-name)                   # joursense
+    #    - name: chart-path
+    #      value: $(params.chart-path)                     # joursense-helm
+    #    - name: image-tag
+    #      value: $(tasks.fetch-source.results.COMMIT)     # SHA del commit
+    #  workspaces:
+    #    - name: source
+    #      workspace: source
