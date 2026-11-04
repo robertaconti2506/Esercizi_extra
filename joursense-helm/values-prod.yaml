@@ -30,4 +30,4 @@ backup:
   pvc:
     storage: 4Gi                   # piu' spazio per tenere piu' giorni di backup
   cronjob:
-    retentionDays: 7              # due settimane di backup invece di 4 giorni
+    retentionDays: 7              # una settimana di backup invece di 4 giorni
