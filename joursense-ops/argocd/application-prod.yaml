@@ -7,7 +7,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/robertaconti2506/Esercizi_extra.git
-    targetRevision: 14-deploy-gestito-da-argo-cd
+    targetRevision: Fase-3
     path: joursense-helm
     helm:
       valueFiles:
