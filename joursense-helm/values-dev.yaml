@@ -1,7 +1,8 @@
 # Ambiente di sviluppo (namespace joursense-dev).
 # Contiene SOLO le differenze rispetto a values.yaml.
-# Installazione:
-# helm upgrade --install joursense ./joursense-helm -n joursense-dev -f joursense-helm/values-dev.yaml --set postgres.password=...
+
+# Deploy gestito da Argo CD: Application joursense-dev (joursense-ops/argocd/application-dev.yamk),
+# con sincronizzazione automatica, app.image.tag viene aggiornato dall'Image Updater.
 
 app:
   image:
