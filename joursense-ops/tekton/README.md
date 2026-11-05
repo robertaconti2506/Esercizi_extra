@@ -1,28 +1,31 @@
-# Pipeline CI/CD di joursense (OpenShift Pipelines / Tekton)
+# Pipeline CI di joursense (OpenShift Pipelines / Tekton)
 
-A ogni push su `main` una pipeline Tekton scarica il codice, esegue i test, costruisce
-l'immagine e aggiorna l'app con `helm upgrade`.
+A ogni push su `main` che modifica il codice dell'app, una pipeline Tekton scarica il
+codice, esegue i test e costruisce l'immagine. Il **deploy** non è compito della pipeline: dalla
+fase 3 lo gestisce Argo CD (vedi [`../argocd/README.md`](../argocd/README.md)).
 
-![Flusso webhook GitHub → OpenShift Pipelines](img/flusso-webhook.png)
+![Flusso CI/CD: GitHub → OpenShift Pipelines → Argo CD](img/flusso-cicd.png)
 
-I numeri sulle frecce seguono il percorso dell'evento: dal push (1) al deploy (10). Le frecce
-tratteggiate indicano l'identità (ServiceAccount) o la risorsa (Secret) usata in quel punto.
+I numeri sulle frecce seguono il percorso dell'evento: dal push (1) all'immagine nel registry (9)
+è il lavoro di questa pipeline; da 10 a 14 proseguono Image Updater e Argo CD.
+Le frecce tratteggiate indicano l'identità (ServiceAccount) o la risorsa (Secret) usata in quel
+punto.
 
 ## File
 
 | File | Oggetto | Ruolo |
 |---|---|---|
 | `operators/openshift-pipelines-subscription.yaml` | Subscription | installa l'operatore OpenShift Pipelines |
-| `tekton/pipeline.yaml` | Pipeline `joursense-pipeline` | i 4 passi: clone, test, build, deploy |
+| `tekton/pipeline.yaml` | Pipeline `joursense-pipeline` | i 3 passi: clone, test, build |
 | `tekton/task-run-tests.yaml` | Task `run-tests` | esegue `pytest` |
-| `tekton/task-helm-upgrade-tekton.yaml` | Task `helm-upgrade` | deploy con `helm upgrade --install` |
-| `tekton/serviceaccount-pipeline.yaml` | ServiceAccount, Role, RoleBinding | identità e permessi minimi della pipeline |
+| `tekton/serviceaccount-pipeline.yaml` | ServiceAccount, Role, RoleBinding | identità e permessi della pipeline |
 | `tekton/eventlistener-sa.yaml` | ServiceAccount e binding | identità dell'EventListener |
-| `tekton/eventlistener.yaml` | EventListener `github-listener` | riceve il webhook, filtra push su `main` |
+| `tekton/eventlistener.yaml` | EventListener `github-listener` | riceve il webhook e decide se avviare la pipeline |
 | `tekton/triggerbinding.yaml` | TriggerBinding | estrae URL e commit dal payload di GitHub |
 | `tekton/triggertemplate.yaml` | TriggerTemplate | crea la PipelineRun |
 | `tekton/smee-client.yaml` | Deployment `smee-client` | inoltra il webhook da smee.io al cluster |
 | `tekton/networkpolicy-webhook.yaml` | NetworkPolicy | aprono il percorso smee-client → EventListener |
+| `tekton/task-helm-upgrade-tekton.yaml` | Task `helm-upgrade` | **non più usata**: era il passo di deploy, tolto con Argo CD |
 | `joursense/tests/` | test pytest | verificano `/healthz` |
 
 Tutto è nel namespace `joursense-helm`.
@@ -44,20 +47,31 @@ fornisce Tekton, Tekton Triggers e le Task di cluster usate dalla pipeline
 
 ### I passi
 
-`joursense-pipeline` (`tekton/pipeline.yaml`) ha quattro Task. Ognuna ha `runAfter` sulla
-precedente: parte solo se quella prima è riuscita, quindi un errore in un passo ferma tutti
-quelli dopo.
+`joursense-pipeline` (`tekton/pipeline.yaml`) ha tre Task. Ognuna ha `runAfter` sulla
+precedente: parte solo se quella prima è riuscita, quindi un errore ferma tutti i passi dopo.
 
 | # | Task | Tipo | Cosa fa |
 |---|---|---|---|
 | 1 | `fetch-source` | `git-clone-1-24-0`, Task di cluster | clona la repo al commit richiesto; produce il risultato `COMMIT` (SHA) |
 | 2 | `test` | `run-tests`, nostra | installa le dipendenze ed esegue `pytest` |
 | 3 | `build-push` | `buildah-1-24-0`, Task di cluster | costruisce `joursense/Containerfile` e pubblica l'immagine `joursense:<SHA>` sul registry interno |
-| 4 | `deploy` | `helm-upgrade`, nostra | `helm upgrade --install` del chart con `app.image.tag=<SHA>` |
 
 Le Task di cluster (`git-clone`, `buildah`) sono fornite dall'operatore nel namespace
 `openshift-pipelines` e vengono richiamate con `resolver: cluster`: non vanno copiate nella
-repo. Le Task `run-tests` e `helm-upgrade` sono nostre, nel namespace `joursense-helm`.
+repo. La Task `run-tests` è nostra, nel namespace `joursense-helm`.
+
+### Dalla CI al deploy
+
+La pipeline si ferma all'immagine nel registry. Da lì:
+
+1. l'**Argo CD Image Updater** vede il nuovo tag e lo scrive in `joursense-helm/values-dev.yaml`
+   con un commit su GitHub;
+2. **Argo CD** aggiorna `joursense-dev` (sync automatica); `joursense-prod` si aggiorna solo con
+   una promozione manuale.
+
+Nella prima versione c'era un quarto passo, `deploy`, con `helm upgrade`. È stato tolto per non
+avere due strumenti (Helm dalla pipeline e Argo CD) che modificano le stesse risorse. Il passo
+è rimasto commentato in `pipeline.yaml` e la Task in `task-helm-upgrade-tekton.yaml`.
 
 ### Parametri
 
@@ -66,8 +80,6 @@ repo. Le Task `run-tests` e `helm-upgrade` sono nostre, nel namespace `joursense
 | `git-url` | (nessuno) | repo da clonare |
 | `git-revision` | `main` | branch o SHA da clonare (dal webhook arriva lo SHA del commit) |
 | `image` | (nessuno) | immagine senza tag: `image-registry.openshift-image-registry.svc:5000/joursense-helm/joursense` |
-| `release-name` | `joursense` | nome del rilascio Helm |
-| `chart-path` | `joursense-helm` | cartella del chart nella repo |
 
 ### Workspace
 
@@ -77,10 +89,9 @@ successivi la trovano lì.
 
 ### Tag dell'immagine = SHA del commit
 
-`build-push` pubblica l'immagine con il tag `$(tasks.fetch-source.results.COMMIT)` e `deploy`
-passa lo stesso valore a Helm (`--set app.image.tag=...`). Ogni deploy corrisponde quindi a un
-commit preciso: dal tag dell'immagine in esecuzione si risale al codice, e a ogni commit il tag
-cambia, per cui il Deployment viene sempre aggiornato.
+`build-push` pubblica l'immagine con il tag `$(tasks.fetch-source.results.COMMIT)`. Ogni
+immagine corrisponde a un commit preciso: dal tag in esecuzione si risale al codice, e
+l'Image Updater accetta solo tag di questo tipo (40 caratteri esadecimali), ignorando `latest`.
 
 ### Task `run-tests`
 
@@ -90,26 +101,6 @@ cambia, per cui il Deployment viene sempre aggiornato.
 - `set -eu`: al primo comando che fallisce lo step si ferma con errore.
 - `HOME=/tmp`: OpenShift esegue i container con un utente casuale senza home scrivibile.
 
-### Task `helm-upgrade`
-
-```bash
-helm upgrade --install "$(params.release-name)" "$(params.chart-path)" \
-  --namespace "$(context.taskRun.namespace)" \
-  --set app.image.tag="$(params.image-tag)" \
-  --set postgres.password="$PG_PASSWORD" \
-  --wait --timeout 5m
-```
-
-- Immagine `docker.io/alpine/helm:4.3.1`, la stessa versione di Helm usata in locale.
-- Installa nel namespace in cui gira la Task, cioè `joursense-helm`.
-- La password di Postgres viene letta dal Secret `postgres-credentials` già presente
-  (`secretKeyRef`): non compare nei parametri né nei log della pipeline.
-- `--wait --timeout 5m`: il deploy riesce solo se i pod nuovi diventano pronti entro 5 minuti,
-  altrimenti la Task (e la PipelineRun) risulta fallita.
-
-
-La pipeline aggiorna solo `joursense-helm`. Gli ambienti `joursense-dev` e `joursense-prod` si aggiornano a mano con il proprio file di values.
-
 ### Rete
 
 Il namespace ha una NetworkPolicy `default-deny-all` (dal chart): ogni traffico va aperto
@@ -117,7 +108,7 @@ esplicitamente.
 
 | NetworkPolicy | Dove è definita | Pod | Cosa permette |
 |---|---|---|---|
-| `allow-tekton-egress` | chart (`tekton.egress` in `values.yaml`) | pod delle Task (`app.kubernetes.io/managed-by: tekton-pipelines`) | tutto il traffico in uscita: clone da GitHub, `pip install` da PyPI, push sul registry, API server |
+| `allow-tekton-egress` | chart (`tekton.egress` in `values.yaml`) | pod delle Task (`app.kubernetes.io/managed-by: tekton-pipelines`) | tutto il traffico in uscita: clone da GitHub, `pip install` da PyPI, push sul registry |
 | `allow-smee-egress` | `tekton/networkpolicy-webhook.yaml` | `smee-client` | uscita su 443 (smee.io) e verso l'EventListener su 8080 |
 | `allow-eventlistener` | `tekton/networkpolicy-webhook.yaml` | EventListener (`eventlistener: github-listener`) | ingresso solo da `smee-client` su 8080; uscita su 443/6443 (API server, per creare la PipelineRun) e 8443 (interceptor `github` e `cel` di Tekton Triggers) |
 
@@ -128,9 +119,8 @@ può inviargli eventi.
 
 ```bash
 oc apply -f joursense-ops/tekton/task-run-tests.yaml
-oc apply -f joursense-ops/tekton/task-helm-upgrade-tekton.yaml
 oc apply -f joursense-ops/tekton/pipeline.yaml
-oc get pipeline,task -n joursense-helm
+oc get pipelines.tekton.dev,tasks.tekton.dev -n joursense-helm
 ```
 
 ### Seguire un'esecuzione
@@ -143,14 +133,15 @@ oc logs -n joursense-helm -l tekton.dev/pipelineRun=<nome-pipelinerun> --all-con
 
 In console: *Pipelines → PipelineRuns*, con lo stato di ogni Task e i log.
 
-Esito atteso: tutte e quattro le Task `Succeeded`, e poi
+Esito atteso: le tre Task `Succeeded` e la nuova immagine nel registry:
 
 ```bash
-helm list -n joursense-helm                                     # STATUS deployed, revisione nuova
-oc get deploy joursense -n joursense-helm -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
-```
+oc get pipelines.tekton.dev joursense-pipeline -n joursense-helm -o jsonpath='{.spec.tasks[*].name}{"\n"}'
+# fetch-source test build-push
 
-L'immagine del Deployment termina con lo SHA dell'ultimo commit.
+oc get istag -n joursense-helm | grep joursense | tail -3
+# joursense:<SHA del commit> ...
+```
 
 ## 3. Test con pytest
 
@@ -179,15 +170,14 @@ pytest -v
 
 ### Se un test fallisce, la pipeline si ferma
 
-La Task `run-tests` usa la stessa immagine Python del `Containerfile` e uno script con
-`set -eu`: se `pytest` termina con errore, lo step fallisce, la Task fallisce, e `build-push`
-e `deploy` (che hanno `runAfter` sui passi precedenti) non partono. In produzione resta la
-versione precedente.
+Se `pytest` termina con errore, lo step fallisce, la Task `test` fallisce e `build-push` (che
+ha `runAfter: test`) non parte. Non viene pubblicata nessuna immagine, quindi l'Image Updater
+non ha niente da portare in dev: negli ambienti resta la versione precedente.
 
 Per provarlo, su un branch di prova: modificare un test perché fallisca (per esempio
 `assert risposta.status_code == 500`), fare push e lanciare la pipeline su quel branch
 (vedi [Lancio manuale](#lancio-manuale)). Nella PipelineRun `test` risulta fallita e
-`build-push` / `deploy` risultano non eseguite.
+`build-push` non eseguita.
 
 ## 4. ServiceAccount dedicato con permessi minimi
 
@@ -195,45 +185,37 @@ La pipeline non usa l'account di un utente né `cluster-admin`, ma il ServiceAcc
 **`pipeline-service-account`** (impostato in `taskRunTemplate.serviceAccountName` del
 TriggerTemplate).
 
-I permessi sono in un **Role** (valido solo in `joursense-helm`), non in un ClusterRole, ed
-elencano solo le risorse che il chart crea e i verbi necessari:
+I permessi sono in un **Role**, valido solo in `joursense-helm`, non in un ClusterRole: niente
+in altri namespace e niente RBAC (il ServiceAccount non può darsi altri permessi).
+
+### Permessi necessari alla pipeline attuale
+
+Con la pipeline di sola CI servono:
 
 | Risorse | Verbi | Perché |
 |---|---|---|
-| `deployments`, `statefulsets` | tutti | app e Postgres del chart |
-| `secrets`, `services` | tutti | Secret del database e Service; Helm salva i rilasci in Secret |
-| `buildconfigs`, `imagestreams` | tutti | risorse del chart |
-| `imagestreams/layers` | `get`, `update` | push dell'immagine sul registry interno (buildah) |
-| `networkpolicies`, `routes` | tutti | risorse del chart |
-| `persistentvolumeclaims`, `cronjobs` | tutti | backup (Fase 2) |
-| `horizontalpodautoscalers` | tutti | HPA (Fase 2) |
-| `prometheusrules` | tutti | alert (Fase 2) |
-| `replicasets`, `pods` | `get`, `list`, `watch` | solo lettura: `helm --wait` controlla che i pod siano pronti |
+| `imagestreams` | `get`, `list`, `watch`, `create`, `update`, `patch` | buildah pubblica l'immagine nell'ImageStream `joursense` |
+| `imagestreams/layers` | `get`, `update` | push dei layer sul registry interno |
 | SCC `pipelines-scc` | `use` | permette alle Task (buildah) di girare con la SCC delle pipeline |
 
-Cosa **non** può fare: niente in altri namespace, niente RBAC (non può darsi altri permessi),
-niente risorse non elencate.
+### Permessi del deploy con Helm
+
+Il Role in `serviceaccount-pipeline.yaml` contiene anche i permessi che servivano al passo
+`deploy` (`helm upgrade` del chart): `deployments`, `statefulsets`, `secrets`, `services`,
+`buildconfigs`, `networkpolicies`, `routes`, `persistentvolumeclaims`, `cronjobs`,
+`horizontalpodautoscalers`, `prometheusrules` e lettura di `pods` e `replicasets`.
+
+### Applicazione e verifica
 
 ```bash
 oc apply -f joursense-ops/tekton/serviceaccount-pipeline.yaml     # da un cluster-admin
 ```
 
-> Il Role contiene il permesso `use` sulla SCC `pipelines-scc`, che l'admin del progetto non
-> ha: per Kubernetes non si possono concedere permessi che non si possiedono, quindi il file
-> va applicato da un cluster-admin.
-
-Quando il chart si arricchisce di un nuovo tipo di risorsa, il Role va aggiornato, altrimenti
-il deploy della pipeline fallisce con `forbidden` su quella risorsa.
-
-Verifica:
-
 ```bash
 SA=system:serviceaccount:joursense-helm:pipeline-service-account
-for R in deployments.apps secrets persistentvolumeclaims cronjobs.batch horizontalpodautoscalers.autoscaling prometheusrules.monitoring.coreos.com; do
-  echo -n "$R: "; oc auth can-i create $R -n joursense-helm --as=$SA
-done
-oc auth can-i create deployments -n joursense-prod --as=$SA       # no: fuori dal namespace
-oc auth can-i create rolebindings -n joursense-helm --as=$SA      # no: niente RBAC
+oc auth can-i update imagestreams/layers -n joursense-helm --as=$SA   # yes
+oc auth can-i create deployments -n joursense-prod --as=$SA           # no: fuori dal namespace
+oc auth can-i create rolebindings -n joursense-helm --as=$SA          # no: niente RBAC
 ```
 
 L'EventListener ha un suo ServiceAccount, **`pipeline-trigger-sa`**, con i soli ruoli
@@ -253,11 +235,15 @@ da **smee.io**, un servizio che inoltra i webhook. Con i numeri del diagramma in
    il cluster che si collega a smee.io, non il contrario, quindi non serve esporre niente;
 4. `smee-client` inoltra l'evento con una POST al Service `el-github-listener:8080`;
 5. l'interceptor `github` verifica la firma e che sia un `push`;
-6. l'interceptor `cel` controlla che il branch sia `main`;
+6. l'interceptor `cel` controlla che il branch sia `main` e che il push modifichi `joursense/`;
 7. il TriggerBinding estrae URL della repo e SHA del commit;
 8. il TriggerTemplate crea la PipelineRun;
-9. `build-push` pubblica l'immagine sul registry interno;
-10. `deploy` aggiorna l'app con `helm upgrade`.
+9. `build-push` pubblica l'immagine sul registry interno.
+
+Da qui proseguono, con i numeri da 10 a 14 del diagramma: l'Image Updater vede il nuovo tag (10)
+e lo scrive in `values-dev.yaml` con un commit su GitHub (11); Argo CD legge la repo (12) e
+aggiorna dev da solo (13), prod solo con un Sync manuale (14). Dettagli in
+[`../argocd/README.md`](../argocd/README.md).
 
 ### EventListener `github-listener`
 
@@ -266,7 +252,24 @@ Due interceptor, in ordine:
 | Interceptor | Cosa fa |
 |---|---|
 | `github` | verifica la firma con il segreto condiviso (`github-webhook-secret`) e accetta solo eventi `push` |
-| `cel` | filtro `body.ref == 'refs/heads/main'`: solo i push su `main` lanciano la pipeline |
+| `cel` | lascia passare solo i push su `main` che aggiungono, modificano o rimuovono file in `joursense/` |
+
+Il filtro `cel`:
+
+```yaml
+value: >-
+  body.ref == 'refs/heads/main' &&
+  body.commits.exists(c,
+    c.added.exists(f, f.startsWith('joursense/')) ||
+    c.modified.exists(f, f.startsWith('joursense/')) ||
+    c.removed.exists(f, f.startsWith('joursense/')))
+```
+
+- L'immagine contiene solo `joursense/`: se un push cambia solo documentazione, chart o file
+  di `joursense-ops/`, ricostruirla è inutile.
+- L'Image Updater fa commit su `values-dev.yaml`: senza il filtro, ogni suo commit farebbe
+  ripartire la pipeline, che produrrebbe un'altra immagine e un altro commit, in un ciclo.
+- Il controllo è su **tutti** i commit del push (`body.commits.exists`), non solo l'ultimo.
 
 Poi:
 
@@ -317,16 +320,17 @@ oc get pods -n joursense-helm | grep -E "el-github-listener|smee-client"   # Run
 oc logs deploy/smee-client -n joursense-helm --tail=5       # eventi inoltrati
 ```
 
-Dopo un push su `main`:
+Dopo un push su `main` che modifica `joursense/`:
 
 ```bash
 oc get pipelinerun -n joursense-helm --sort-by=.metadata.creationTimestamp | tail -3
 ```
 
 Compare una nuova `joursense-pipeline-run-...`, e nei log di `smee-client` si vede l'evento
-inoltrato. Su GitHub, in *Settings → Webhooks → Recent Deliveries*, la consegna verso smee.io
-risulta riuscita: quella risposta è di smee.io, quindi la prova che la pipeline è partita è
-la nuova PipelineRun.
+inoltrato. Un push che non tocca `joursense/` arriva all'EventListener ma **non** crea
+PipelineRun. Su GitHub, in *Settings → Webhooks → Recent Deliveries*, la consegna verso smee.io
+risulta riuscita: quella risposta è di smee.io, quindi la prova che la pipeline è partita è la
+nuova PipelineRun.
 
 ## Lancio manuale
 
@@ -365,6 +369,27 @@ oc get pipelinerun -n joursense-helm -w
 
 `oc create` (non `apply`) perché il nome è generato da `generateName`.
 
+### Prova senza aggiornare dev
+
+L'Image Updater controlla l'immagine `joursense-helm/joursense` e porta in dev il tag costruito
+più di recente, da qualunque branch provenga. Una PipelineRun manuale che riesce, con il
+parametro `image` di default, porterebbe quindi in dev il codice del branch di prova.
+
+Per evitarlo, nella PipelineRun manuale si pubblica l'immagine con un nome diverso: l'Image
+Updater non la vede e dev non cambia.
+
+```yaml
+    - name: image
+      value: image-registry.openshift-image-registry.svc:5000/joursense-helm/joursense-prova
+```
+
+Clone, test e build avvengono come sempre; l'immagine finisce nell'ImageStream
+`joursense-prova`. Finita la prova:
+
+```bash
+oc delete imagestream joursense-prova -n joursense-helm
+```
+
 ## Pulizia
 
 Ogni PipelineRun crea un PVC da 1Gi per il workspace, che resta finché la PipelineRun esiste.
@@ -373,4 +398,3 @@ Per eliminare quelle fallite (e i loro PVC):
 ```bash
 oc get pipelinerun -n joursense-helm --no-headers | awk '$2=="False" {print $1}' | xargs oc delete pipelinerun -n joursense-helm
 ```
----
