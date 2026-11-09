@@ -8,13 +8,14 @@ Riferimento: issue **#14 – Deploy gestito da Argo CD**.
 
 ## Obiettivo
 
-Prima di questa issue il deploy avveniva con `helm upgrade`, lanciato a mano oppure dall'ultimo passo della pipeline Tekton. Questo approccio ha alcuni limiti:
+Prima di questa issue il deploy avveniva con `helm upgrade`, lanciato a mano oppure dall'ultimo passo della pipeline Tekton. <br>
+Questo approccio ha alcuni limiti:
 
-- lo stato del cluster dipende da **chi** ha lanciato il comando e con quali parametri;
+- lo stato del cluster dipende da chi ha lanciato il comando e con quali parametri;
 - se qualcuno modifica una risorsa a mano, nessuno se ne accorge;
-- non c'è un punto unico che descriva come *dovrebbe* essere ogni ambiente.
+- non c'è un punto unico che descriva come dovrebbe essere ogni ambiente.
 
-Con GitOps il repository Git diventa l'**unica fonte di verità**: il chart e i file di values descrivono lo stato desiderato, e Argo CD si occupa di renderlo reale sul cluster, confrontando continuamente Git con ciò che gira davvero.
+Con GitOps, il repository Git diventa l'unica fonte di verità: il chart e i file di values descrivono lo stato desiderato, e Argo CD si occupa di renderlo reale sul cluster, confrontando continuamente Git con ciò che gira davvero.
 
 Requisiti dell'issue:
 
