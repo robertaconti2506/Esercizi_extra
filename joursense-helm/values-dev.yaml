@@ -1,7 +1,7 @@
 # Ambiente di sviluppo (namespace joursense-dev).
 # Contiene SOLO le differenze rispetto a values.yaml.
 
-# Deploy gestito da Argo CD: Application joursense-dev (joursense-ops/argocd/application-dev.yamk),
+# Deploy gestito da Argo CD: Application joursense-dev (joursense-ops/argocd/application-dev.yaml),
 # con sincronizzazione automatica, app.image.tag viene aggiornato dall'Image Updater.
 
 app:
