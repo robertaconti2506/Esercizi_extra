@@ -5,8 +5,8 @@ metadata:
   namespace: joursense-prod
 spec:
   hard:
-    limits.cpu: "10"
-    limits.memory: 10Gi
+    limits.cpu: "12"
+    limits.memory: 12Gi
     pods: "16"
     persistentvolumeclaims: "5"
     requests.storage: 10Gi

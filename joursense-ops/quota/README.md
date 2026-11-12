@@ -41,8 +41,8 @@ Se fossero nel chart, ogni `helm upgrade` (manuale o della pipeline) fallirebbe 
 
 | | dev | prod |
 |---|---|---|
-| `limits.cpu` | 2 | 10 |
-| `limits.memory` | 2Gi | 10Gi |
+| `limits.cpu` | 2 | 12 |
+| `limits.memory` | 2Gi | 12Gi |
 | `pods` | 8 | 16 |
 | `persistentvolumeclaims` | 2 | 5 |
 | `requests.storage` | 5Gi | 10Gi |
@@ -65,6 +65,11 @@ La quota deve contenere tutto ciò che può girare **contemporaneamente** nel ca
 compresi i pod in più del **rolling update**: durante un aggiornamento OpenShift crea i pod
 nuovi prima di spegnere i vecchi (`maxSurge: 25%`, arrotondato per eccesso).
 
+Va contato anche un secondo effetto del rolling update: i pod vecchi in **Terminating**
+continuano a pesare sulla quota finché non sono spariti del tutto (fino a 30 secondi di
+spegnimento). Il Deployment invece non li conta quando decide quanti pod nuovi creare: per
+qualche secondo nel namespace ci sono quindi più pod di quelli previsti dal `maxSurge`.
+
 ### Dev (limits)
 
 | Cosa | Pod | CPU | Memoria |
@@ -83,12 +88,13 @@ Quota: 2 / 2Gi / 8 pod. Storage: 1Gi (database).
 |---|---|---|---|
 | App con HPA al massimo | 5 | 5 | 5Gi |
 | Pod extra del rolling update (25% di 5 → 2) | +2 | 2 | 2Gi |
+| Pod vecchi ancora in Terminating (margine) | +3 | 3 | 3Gi |
 | Postgres | 1 | 1 | 1Gi |
 | Job di backup | 1 | 200m | 256Mi |
 | Pod di prova di ripristino | 1 | 500m | 512Mi |
-| **Totale** | **10** | **8,7** | **~8,75Gi** |
+| **Totale** | **13** | **11,7** | **~11,75Gi** |
 
-Quota: 10 / 10Gi / 16 pod. Storage: 1Gi (database) + 4Gi (backup) = 5Gi su 10Gi.
+Quota: 12 / 12Gi / 16 pod. Storage: 1Gi (database) + 4Gi (backup) = 5Gi su 10Gi.
 
 I pod della pipeline Tekton girano nel namespace `joursense-helm`, non in dev e prod: non
 pesano su queste quote.
