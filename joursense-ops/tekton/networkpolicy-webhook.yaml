@@ -1,0 +1,57 @@
+# NetworkPolicy per il percorso del webhook: smee-client -> EventListener.
+# Servono perche' nel namespace c'e' default-deny-all (chart joursense-helm).
+#   oc apply -f joursense-ops/tekton/networkpolicy-webhook.yaml
+---
+# smee-client: esce verso smee.io (HTTPS) e verso l'EventListener
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-smee-egress
+  namespace: joursense-helm
+spec:
+  podSelector:
+    matchLabels:
+      app: smee-client
+  policyTypes:
+  - Egress
+  egress:
+  - ports:                        # smee.io: HTTPS verso Internet
+    - port: 443
+      protocol: TCP
+  - to:                           # inoltro dell'evento all'EventListener
+    - podSelector:
+        matchLabels:
+          eventlistener: github-listener
+    ports:
+    - port: 8080
+      protocol: TCP
+---
+# EventListener: riceve solo da smee-client; esce verso API server e interceptor di Tekton
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-eventlistener
+  namespace: joursense-helm
+spec:
+  podSelector:
+    matchLabels:
+      eventlistener: github-listener
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: smee-client
+    ports:
+    - port: 8080
+      protocol: TCP
+  egress:
+  - ports:
+    - port: 443                   # API server (Service kubernetes)
+      protocol: TCP
+    - port: 6443                  # API server (endpoint reale)
+      protocol: TCP
+    - port: 8443                  # interceptor github e cel di Tekton Triggers
+      protocol: TCP

@@ -1,0 +1,26 @@
+# Regole dell'Image Updater per joursense-dev:
+# quando nel registry compare un'immagine nuova (tag = SHA del commit),
+# scrive il tag in values-dev.yaml con un commit su GitHub.
+
+apiVersion: argocd-image-updater.argoproj.io/v1alpha1
+kind: ImageUpdater
+metadata:
+  name: joursense-dev
+  namespace: openshift-gitops              # stesso namespace delle Application
+spec:
+  applicationRefs:
+    - namePattern: "joursense-dev"         # solo dev, prod resta manuale
+      images:
+        - alias: joursense
+          imageName: image-registry.openshift-image-registry.svc:5000/joursense-helm/joursense
+          commonUpdateSettings:
+            updateStrategy: newest-build   # il tag costruito più di recente
+            allowTags: "regexp:^[0-9a-f]{40}$"   # solo tag SHA, ignora latest
+          manifestTargets:
+            helm:
+              tag: app.image.tag           # il campo del chart da aggiornare
+          pullSecret: pullsecret:openshift-gitops/image-updater-registry-pull
+  writeBackConfig:
+    method: git:secret:openshift-gitops/git-creds-joursense
+    gitConfig:
+      writeBackTarget: "helmvalues:/joursense-helm/values-dev.yaml"
