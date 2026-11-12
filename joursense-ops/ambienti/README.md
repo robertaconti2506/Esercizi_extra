@@ -42,7 +42,7 @@ Entrambe mostrano `PATH joursense-helm`: stesso chart, values diversi.
 | Backup (CronJob + PVC) | attivo, 2Gi, 4 giorni | **assente** | attivo, **4Gi, 7 giorni** |
 | Alert (PrometheusRule) | attivo | **assente** | attivo |
 | Immagine dell'app | namespace del rilascio | da `joursense-helm` | da `joursense-helm` |
-| Tag dell'immagine | `latest` | scritto dall'**Image Updater** | promosso a mano |
+| Tag dell'immagine | `latest` | scritto dall'**Image Updater** | scritto dall'**Image Updater**, applicato con il **Sync** manuale |
 | Secret del database | creato dal chart | **creato a parte** | **creato a parte** |
 
 Motivazioni:

@@ -1,8 +1,9 @@
 # Ambiente di produzione (namespace joursense-prod).
 # Contiene SOLO le differenze rispetto a values.yaml.
 
-# Deploy gestito da Argo CD: Application joursense-prod (joursense-ops/argocd/application-prod.yamk),
-# con sincronizzazione automatica, app.image.tag viene aggiornato dall'Image Updater.
+# Deploy gestito da Argo CD: Application joursense-prod (joursense-ops/argocd/application-prod.yaml),
+# con sincronizzazione MANUALE: app.image.tag viene aggiornato dall'Image Updater,
+# ma la nuova versione arriva sul cluster solo dopo il Sync.
 
 app:
   image:

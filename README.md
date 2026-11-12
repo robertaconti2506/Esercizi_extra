@@ -169,8 +169,8 @@ Nella repo restano solo i **riferimenti** a questi Secret (nomi e chiavi), mai i
 
 ## Installazione da zero
 
-L'ordine conta: ogni passo usa quello che crea il precedente. I comandi esatti sono nei README
-indicati.
+L'ordine conta: ogni passo usa quello che crea il precedente. Tutti i comandi, in ordine e con
+le verifiche, sono in [`DEPLOY.md`](DEPLOY.md); le spiegazioni nei README indicati.
 
 **Da cluster-admin (una volta sola)**
 
