@@ -46,17 +46,18 @@ Requisiti dell'issue:
                      Argo CD Image Updater
                      (controlla il registry ogni 2 minuti)
                                │  commit su GitHub: app.image.tag = <sha>
-                               ▼
-                 GitHub: joursense-helm/values-dev.yaml
-                               │
-                               ▼
-                           Argo CD
-            ┌──────────────────┴──────────────────┐
-            ▼                                     ▼
-   joursense-dev                           joursense-prod
-   sync AUTOMATICA                         sync MANUALE
-   (prune + selfHeal)                      (resta OutOfSync finché
-                                            non si preme Sync)
+              ┌────────────────┴────────────────┐
+              ▼                                 ▼
+   GitHub: values-dev.yaml             GitHub: values-prod.yaml
+              │                                 │
+              ▼                                 ▼
+           Argo CD                           Argo CD
+              │                                 │
+              ▼                                 ▼
+   joursense-dev                       joursense-prod
+   sync AUTOMATICA                     sync MANUALE
+   (prune + selfHeal)                  (resta OutOfSync finché
+                                        non si preme Sync)
 ```
 
 Divisione dei compiti:
@@ -64,9 +65,9 @@ Divisione dei compiti:
 | Componente | Ruolo |
 |---|---|
 | **Tekton** (CI) | Testa il codice e costruisce l'immagine. Non fa più deploy. |
-| **Image Updater** | Si accorge della nuova immagine e scrive il nuovo tag in Git, solo per dev. |
-| **Argo CD** (CD) | Applica al cluster ciò che è descritto in Git. |
-| **Persona** | Decide quando portare una versione in prod. |
+| **Image Updater** | Si accorge della nuova immagine e scrive il nuovo tag in Git, sia per dev sia per prod. |
+| **Argo CD** (CD) | Applica al cluster ciò che è descritto in Git: subito in dev, solo dopo il Sync manuale in prod. |
+| **Persona** | Decide quando portare in prod la versione già scritta in `values-prod.yaml`, premendo Sync. |
 
 
 ## Le Application di Argo CD
@@ -133,7 +134,7 @@ Effetti:
 
 I file `values-dev.yaml` e `values-prod.yaml` (introdotti con l'issue #13) contengono solo le differenze rispetto a `values.yaml`. Helm, e quindi Argo CD, carica prima `values.yaml` e poi applica sopra il file dell'ambiente.
 
-A questi file è stato aggiunto `postgres.createSecret: false`. Inoltre, in `values-dev.yaml`, il campo `app.image.tag` viene ora scritto automaticamente dall'Image Updater.
+A questi file è stato aggiunto `postgres.createSecret: false`. Inoltre, sia in `values-dev.yaml` sia in `values-prod.yaml`, il campo `app.image.tag` viene ora scritto automaticamente dall'Image Updater, sempre con il tag SHA di un'immagine precisa e mai con `latest`.
 
 ### Annotation `resolve-names` disattivata
 
@@ -216,9 +217,9 @@ L'Argo CD Image Updater svolge esattamente questo compito, in modo automatico:
 
 1. ogni 2 minuti legge l'elenco dei tag di `joursense-helm/joursense` nel registry interno;
 2. sceglie il tag costruito più di recente;
-3. lo confronta con quello usato da `joursense-dev`;
-4. se è diverso, fa un commit su GitHub che scrive il nuovo tag in `values-dev.yaml`;
-5. Argo CD vede il commit e aggiorna dev.
+3. lo confronta con quello usato da ciascuna Application (`joursense-dev` e `joursense-prod`);
+4. se è diverso, fa un commit su GitHub che scrive il nuovo tag nel file di values dell'ambiente (`values-dev.yaml` o `values-prod.yaml`);
+5. Argo CD vede il commit: dev si aggiorna da solo, prod passa a **OutOfSync** e aspetta il Sync manuale.
 
 È stato scelto il write-back su Git (invece della modifica diretta dell'Application sul cluster) perché così:
 
@@ -317,9 +318,20 @@ Il token è salvato in un Secret nel namespace di Argo CD, con le chiavi `userna
 
 ### Regole dell'Image Updater
 
+Ci sono due regole, una per ambiente. Cambiano solo l'Application a cui si applicano (`namePattern`) e il file di values in cui scrivono (`writeBackTarget`):
+
+| File | Application | Scrive in |
+|---|---|---|
+| `imageupdater-dev.yaml` | `joursense-dev` | `values-dev.yaml` |
+| `imageupdater-prod.yaml` | `joursense-prod` | `values-prod.yaml` |
+
 ```bash
 oc apply -f joursense-ops/argocd/imageupdater-dev.yaml
+oc apply -f joursense-ops/argocd/imageupdater-prod.yaml
+oc get imageupdater -n openshift-gitops
 ```
+
+Sono due oggetti separati perché il `writeBackConfig` vale per tutto il CR: con un'unica regola, entrambi gli ambienti scriverebbero nello stesso file di values.
 
 ## Permessi per l'utenza normale
 
@@ -439,18 +451,24 @@ Per verificare l'immagine in uso:
 oc get deploy joursense -n joursense-dev \
   -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
 ```
-
 ### Promozione in prod
 
-1. Leggere il tag in uso in dev da `values-dev.yaml` (`app.image.tag`).
-2. Scrivere lo stesso tag in `values-prod.yaml`:
-   ```yaml
-   app:
-     image:
-       tag: <sha>
-   ```
-3. Commit e push.
-4. Prod risulta **OutOfSync**: controllare le differenze con **App Diff** in console, poi **SYNC → SYNCHRONIZE**.
+Il tag non va più copiato a mano: l'Image Updater lo scrive in `values-prod.yaml` insieme a quello di dev.
+
+1. Dopo una nuova immagine, verificare che dev funzioni con la nuova versione.
+2. Prod risulta **OutOfSync**: in console, **App Diff** mostra che cambia solo il tag dell'immagine. Se lo stato non è ancora aggiornato, usare **REFRESH**.
+3. **SYNC → SYNCHRONIZE** per portare la nuova versione in prod.
+
+Per verificare che dev e prod usino la stessa immagine:
+
+```bash
+oc get deploy joursense -n joursense-dev \
+  -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
+oc get deploy joursense -n joursense-prod \
+  -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
+```
+
+> Se in dev la nuova versione ha problemi, prod non va sincronizzato. Si corregge il codice (oppure si fa `git revert` del commit) e la correzione segue lo stesso percorso.
 
 ### Modifica di configurazione (values o template)
 
@@ -465,6 +483,7 @@ Con GitOps si torna indietro **in Git**, non sul cluster: si annulla il commit c
 ```bash
 # stato sintetico
 oc get imageupdater joursense-dev -n openshift-gitops -o yaml | sed -n '/^status:/,$p'
+oc get imageupdater joursense-prod -n openshift-gitops -o yaml | sed -n '/^status:/,$p'
 
 # ultimi eventi del controller, in forma leggibile
 oc logs -n openshift-gitops deploy/openshift-gitops-argocd-image-updater-controller --since=10m \
@@ -499,5 +518,3 @@ Verifica dei task della pipeline sul cluster:
 oc get pipelines.tekton.dev joursense-pipeline -n joursense-helm \
   -o jsonpath='{.spec.tasks[*].name}{"\n"}'
 ```
-
-
