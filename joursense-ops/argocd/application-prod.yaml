@@ -7,7 +7,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/robertaconti2506/Esercizi_extra.git
-    targetRevision: Fase-3
+    targetRevision: main
     path: joursense-helm
     helm:
       valueFiles:

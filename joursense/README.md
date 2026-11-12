@@ -1,6 +1,5 @@
 # Joursense — il giornalino aziendale
 
-
 Joursense è il giornalino interno dell'ufficio: notizie scritte dai colleghi, la classifica degli articoli più letti, il meteo, qualche minigioco per la pausa e l'immancabile dipendente del mese.
 
 È un progetto per imparare a costruire e far girare un'applicazione su **OpenShift**: build da Git, database con disco persistente, probe, Secret, Route HTTPS e NetworkPolicy.
