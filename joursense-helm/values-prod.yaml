@@ -6,8 +6,9 @@
 
 app:
   image:
-    namespace: joursense-helm      # l'immagine viene costruita solo li'
-  resources:                       # il doppio delle risorse di values.yaml
+    namespace: joursense-helm # l'immagine viene costruita solo li'
+    tag: 1c1a8b546221eef301fea0894b214543adb439a2
+  resources: # il doppio delle risorse di values.yaml
     limits:
       cpu: "1"
       memory: 1Gi
@@ -15,10 +16,9 @@ app:
       cpu: 200m
       memory: 512Mi
   autoscaling:
-    minReplicas: 2                 # sempre almeno 2 pod: se uno cade, l'altro serve il traffico
-
+    minReplicas: 2 # sempre almeno 2 pod: se uno cade, l'altro serve il traffico
 postgres:
-  createSecret: false              # secret postgres-credentials creato a parte, non dal chart
+  createSecret: false # secret postgres-credentials creato a parte, non dal chart
   resources:
     limits:
       cpu: "1"
@@ -26,9 +26,8 @@ postgres:
     requests:
       cpu: 200m
       memory: 512Mi
-
 backup:
   pvc:
-    storage: 4Gi                   # piu' spazio per tenere piu' giorni di backup
+    storage: 4Gi # piu' spazio per tenere piu' giorni di backup
   cronjob:
-    retentionDays: 7              # una settimana di backup invece di 4 giorni
+    retentionDays: 7 # una settimana di backup invece di 4 giorni
