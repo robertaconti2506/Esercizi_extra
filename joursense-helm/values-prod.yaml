@@ -8,7 +8,7 @@
 app:
   image:
     namespace: joursense-helm # l'immagine viene costruita solo li'
-    tag: c81d87eaf77f906323a24b78bd414fffc217de6f
+    tag: f7f23f0e9c8dc1fbd02e879ee3742246292c6f2a
   resources: # il doppio delle risorse di values.yaml
     limits:
       cpu: "1"
