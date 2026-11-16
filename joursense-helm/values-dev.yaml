@@ -7,7 +7,7 @@
 app:
   image:
     namespace: joursense-helm # l'immagine viene costruita solo li'
-    tag: f7f23f0e9c8dc1fbd02e879ee3742246292c6f2a
+    tag: da99686f60cd1848b5f6dd3fe67176bd2ec65523
   autoscaling:
     enabled: false # niente HPA: una replica fissa (app.replicas: 1 di values.yaml)
   resources: # meta' delle risorse di values.yaml
