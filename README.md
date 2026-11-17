@@ -17,7 +17,7 @@ nella repo**: le credenziali stanno in Secret creati a parte sul cluster.
 
 ```mermaid
 flowchart LR
-    dev([Sviluppatore]) -->|push su main| gh[GitHub]
+    dev([Sviluppatore]) -->|push su dev| gh[GitHub]
     gh -->|webhook| smee[smee.io]
     smee --> el[EventListener]
 
@@ -27,21 +27,24 @@ flowchart LR
     end
 
     reg --> iu[Argo CD<br/>Image Updater]
-    iu -->|commit del nuovo tag<br/>in values-dev.yaml| gh
+    iu -->|commit del nuovo tag<br/>in values-dev.yaml, branch dev| gh
+    dev -.->|PR dev → main<br/>tag in values-prod.yaml| gh
 
     gh --> argo[Argo CD]
-    argo -->|sync automatica| d[joursense-dev]
-    argo -->|sync manuale| p[joursense-prod]
+    argo -->|branch dev<br/>sync automatica| d[joursense-dev]
+    argo -->|branch main<br/>sync manuale| p[joursense-prod]
 ```
 
-1. Un push su `main` che modifica il codice (`joursense/`) arriva tramite webhook a un
+1. Un push sul branch `dev` che modifica il codice (`joursense/`) arriva tramite webhook a un
    EventListener Tekton.
 2. La **pipeline** clona il codice, esegue i test e costruisce l'immagine, taggata con lo SHA
    del commit. Se un test fallisce si ferma.
 3. L'**Image Updater** si accorge della nuova immagine e scrive il tag in `values-dev.yaml`,
-   con un commit su GitHub.
-4. **Argo CD** applica il chart Helm: in **dev** subito (sync automatica), in **prod** solo
-   quando una persona lo decide (sync manuale).
+   con un commit sul branch `dev`.
+4. **Argo CD** applica il chart Helm in **dev**, che segue il branch `dev`, subito (sync automatica).
+5. **Promozione in prod**: si scrive lo stesso tag in `values-prod.yaml` e si apre una PR
+   `dev` → `main`. Dopo il merge, prod (che segue `main`) va in OutOfSync e si aggiorna solo
+   quando una persona preme **Sync**.
 
 La CI (Tekton) produce e verifica l'immagine; il CD (Argo CD) la porta negli ambienti. Lo stato
 di ogni ambiente è descritto in Git: per sapere cosa gira in dev o in prod basta leggere i
@@ -113,7 +116,7 @@ non fa parte dell'app (pipeline, Application di Argo CD, strumenti di test).
 | Pipeline Tekton | `fetch-source` → `test` → `build-push`; ogni passo parte solo se il precedente è riuscito | [`tekton/`](joursense-ops/tekton/README.md) |
 | Test pytest su `/healthz` | 3 test, senza bisogno di PostgreSQL; se falliscono la build non parte | [`tekton/`](joursense-ops/tekton/README.md#3-test-con-pytest) |
 | ServiceAccount dedicato | `pipeline-service-account` con un Role limitato al namespace e alle sole risorse necessarie | [`tekton/`](joursense-ops/tekton/README.md#4-serviceaccount-dedicato-con-permessi-minimi) |
-| Webhook GitHub + EventListener | GitHub → smee.io → `smee-client` → EventListener; firma verificata, solo push su `main` che modificano `joursense/` | [`tekton/`](joursense-ops/tekton/README.md#5-webhook-github-ed-eventlistener) |
+| Webhook GitHub + EventListener | GitHub → smee.io → `smee-client` → EventListener; firma verificata, solo push su `dev` che modificano `joursense/` | [`tekton/`](joursense-ops/tekton/README.md#5-webhook-github-ed-eventlistener) |
 
 Nella prima versione la pipeline aveva un quarto passo, `deploy` con `helm upgrade`. Con la
 fase 3 il deploy è passato ad Argo CD e la pipeline si occupa solo di CI.
@@ -136,7 +139,7 @@ fase 3 il deploy è passato ad Argo CD e la pipeline si occupa solo di CI.
 |---|---|---|
 | Operatore OpenShift GitOps | Subscription YAML, canale `gitops-1.22` | [`operators/`](joursense-ops/operators/README.md) |
 | Due ambienti dallo stesso chart | `values-dev.yaml` e `values-prod.yaml` contengono solo le differenze | [`ambienti/`](joursense-ops/ambienti/README.md) |
-| Deploy con Argo CD | Application `joursense-dev` (sync automatica) e `joursense-prod` (sync manuale); Image Updater per dev | [`argocd/`](joursense-ops/argocd/README.md) |
+| Deploy con Argo CD | Application `joursense-dev` (branch `dev`, sync automatica) e `joursense-prod` (branch `main`, sync manuale); Image Updater per dev | [`argocd/`](joursense-ops/argocd/README.md) |
 | Quote e limiti | ResourceQuota e LimitRange in dev e prod, dimensionati sul caso peggiore (HPA al massimo, backup, rolling update) | [`quota/`](joursense-ops/quota/README.md) |
 
 ### Differenze tra gli ambienti
@@ -147,8 +150,10 @@ fase 3 il deploy è passato ad Argo CD e la pipeline si occupa solo di CI.
 | Risorse app (requests / limits) | 50m, 128Mi / 250m, 256Mi | 200m, 512Mi / 1, 1Gi |
 | Backup | no | ogni notte, PVC da 4Gi, 7 giorni |
 | Alert | no | sì |
+| Branch Git seguito | `dev` | `main` |
 | Sync di Argo CD | automatica | manuale |
-| Aggiornamento dell'immagine | automatico (Image Updater) | manuale del tag in `values-prod.yaml` |
+| Aggiornamento dell'immagine | automatico (Image Updater, commit su `dev`) | tag scritto in `values-prod.yaml` nella PR `dev` → `main` |
+| Nome nella testata (`app.ambiente`) | Joursense-dev | Joursense-prod |
 
 ---
 

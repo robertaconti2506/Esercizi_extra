@@ -31,10 +31,10 @@ Requisiti dell'issue:
 
 ```
  sviluppatore
-     │  push di codice su main (cartella joursense/)
+     │  push di codice sul branch dev (cartella joursense/)
      ▼
  GitHub ──webhook (smee)──► EventListener Tekton
-                               │  filtro: parte solo se cambia joursense/
+                               │  filtro: branch dev e cambia joursense/
                                ▼
                          Pipeline Tekton
                          clone → test → build
@@ -45,19 +45,24 @@ Requisiti dell'issue:
                                ▼
                      Argo CD Image Updater
                      (controlla il registry ogni 2 minuti)
-                               │  commit su GitHub: app.image.tag = <sha>
-              ┌────────────────┴────────────────┐
-              ▼                                 ▼
-   GitHub: values-dev.yaml             GitHub: values-prod.yaml
-              │                                 │
-              ▼                                 ▼
-           Argo CD                           Argo CD
-              │                                 │
-              ▼                                 ▼
-   joursense-dev                       joursense-prod
-   sync AUTOMATICA                     sync MANUALE
-   (prune + selfHeal)                  (resta OutOfSync finché
-                                        non si preme Sync)
+                               │  commit sul branch dev: app.image.tag = <sha>
+                               ▼
+                 GitHub, branch dev: values-dev.yaml
+                               │
+                               ▼
+                     Argo CD ──► joursense-dev
+                                 sync AUTOMATICA (prune + selfHeal)
+
+ promozione: sul branch dev si scrive lo stesso <sha> in values-prod.yaml,
+             PR dev → main, merge
+                               │
+                               ▼
+                 GitHub, branch main: values-prod.yaml
+                               │
+                               ▼
+                     Argo CD ──► joursense-prod
+                                 sync MANUALE (resta OutOfSync finché
+                                 non si preme Sync)
 ```
 
 Divisione dei compiti:
@@ -65,9 +70,9 @@ Divisione dei compiti:
 | Componente | Ruolo |
 |---|---|
 | **Tekton** (CI) | Testa il codice e costruisce l'immagine. Non fa più deploy. |
-| **Image Updater** | Si accorge della nuova immagine e scrive il nuovo tag in Git, sia per dev sia per prod. |
+| **Image Updater** | Si accorge della nuova immagine e scrive il nuovo tag in `values-dev.yaml`, sul branch `dev`. |
 | **Argo CD** (CD) | Applica al cluster ciò che è descritto in Git: subito in dev, solo dopo il Sync manuale in prod. |
-| **Persona** | Decide quando portare in prod la versione già scritta in `values-prod.yaml`, premendo Sync. |
+| **Persona** | Decide quale versione portare in prod: scrive il tag in `values-prod.yaml`, fa il merge della PR `dev` → `main` e preme Sync. |
 
 
 ## Le Application di Argo CD
@@ -176,7 +181,7 @@ Motivazione: se la pipeline continuasse a fare `helm upgrade`, ci sarebbero due 
 
 La pipeline continua a:
 
-- partire a ogni push rilevante su `main`, tramite webhook ed EventListener;
+- partire a ogni push rilevante sul branch `dev`, tramite webhook ed EventListener;
 - fermarsi se il test su `/healthz` fallisce, così un'immagine difettosa non viene nemmeno costruita;
 - pubblicare l'immagine nel registry interno con tag = SHA del commit, che identifica in modo univoco il codice contenuto.
 
@@ -190,19 +195,19 @@ Il filtro CEL dell'EventListener è stato esteso:
   params:
     - name: filter
       value: >-
-        body.ref == 'refs/heads/main' &&
+        body.ref == 'refs/heads/dev' &&
         body.commits.exists(c,
           c.added.exists(f, f.startsWith('joursense/')) ||
           c.modified.exists(f, f.startsWith('joursense/')) ||
           c.removed.exists(f, f.startsWith('joursense/')))
 ```
 
-La pipeline parte solo se il push su `main` modifica almeno un file nella cartella `joursense/`**, cioè il codice dell'applicazione, il `Containerfile` o i test.
+La pipeline parte solo se il push sul branch `dev` modifica almeno un file nella cartella `joursense/`**, cioè il codice dell'applicazione, il `Containerfile` o i test.
 
 Motivazioni:
 
 - l'immagine contiene solo il contenuto di `joursense/` (`CONTEXT: ./joursense`): se lì non cambia nulla, ricostruirla è inutile;
-- l'Image Updater fa commit su `values-dev.yaml`. Senza il filtro, una volta che le Application seguiranno `main`, ogni suo commit farebbe ripartire la pipeline, che produrrebbe una nuova immagine, che genererebbe un nuovo commit, in un ciclo continuo;
+- l'Image Updater fa commit su `values-dev.yaml`, sul branch `dev`. Senza il filtro, ogni suo commit farebbe ripartire la pipeline, che produrrebbe una nuova immagine, che genererebbe un nuovo commit, in un ciclo continuo;
 - il filtro controlla tutti i commit del push (`body.commits.exists`), non solo l'ultimo: un push con più commit viene considerato correttamente anche se il codice è stato modificato in uno dei commit intermedi.
 
 ---
@@ -217,9 +222,9 @@ L'Argo CD Image Updater svolge esattamente questo compito, in modo automatico:
 
 1. ogni 2 minuti legge l'elenco dei tag di `joursense-helm/joursense` nel registry interno;
 2. sceglie il tag costruito più di recente;
-3. lo confronta con quello usato da ciascuna Application (`joursense-dev` e `joursense-prod`);
-4. se è diverso, fa un commit su GitHub che scrive il nuovo tag nel file di values dell'ambiente (`values-dev.yaml` o `values-prod.yaml`);
-5. Argo CD vede il commit: dev si aggiorna da solo, prod passa a **OutOfSync** e aspetta il Sync manuale.
+3. lo confronta con quello usato dall'Application `joursense-dev`;
+4. se è diverso, fa un commit sul branch `dev` che scrive il nuovo tag in `values-dev.yaml`;
+5. Argo CD vede il commit e aggiorna dev da solo.
 
 È stato scelto il write-back su Git (invece della modifica diretta dell'Application sul cluster) perché così:
 
@@ -227,9 +232,9 @@ L'Argo CD Image Updater svolge esattamente questo compito, in modo automatico:
 - ogni aggiornamento è tracciato nella cronologia di Git, con autore `argocd-image-updater`;
 - tornare a una versione precedente è un normale `git revert`.
 
-L'Image Updater segue solo dev: in prod la nuova versione si porta a mano, coerentemente con la sync manuale.
+L'Image Updater segue solo dev: in prod la nuova versione si porta con la PR `dev` → `main`, scrivendo il tag in `values-prod.yaml`, coerentemente con la sync manuale.
 
-`repository` e `branch` non sono specificati: in loro assenza l'Image Updater usa quelli dell'Application.
+`branch: dev` è indicato esplicitamente in `gitConfig`; `repository` non è specificato: in sua assenza l'Image Updater usa quello dell'Application.
 
 > Formattazione: per aggiornare il tag, l'Image Updater riscrive `values-dev.yaml` con il proprio stile (un solo spazio prima dei commenti, senza righe vuote tra i blocchi). Contenuto e commenti restano invariati.
 
@@ -318,20 +323,18 @@ Il token è salvato in un Secret nel namespace di Argo CD, con le chiavi `userna
 
 ### Regole dell'Image Updater
 
-Ci sono due regole, una per ambiente. Cambiano solo l'Application a cui si applicano (`namePattern`) e il file di values in cui scrivono (`writeBackTarget`):
+C'è una sola regola, per dev:
 
 | File | Application | Scrive in |
 |---|---|---|
-| `imageupdater-dev.yaml` | `joursense-dev` | `values-dev.yaml` |
-| `imageupdater-prod.yaml` | `joursense-prod` | `values-prod.yaml` |
+| `imageupdater-dev.yaml` | `joursense-dev` | `values-dev.yaml`, branch `dev` |
 
 ```bash
 oc apply -f joursense-ops/argocd/imageupdater-dev.yaml
-oc apply -f joursense-ops/argocd/imageupdater-prod.yaml
 oc get imageupdater -n openshift-gitops
 ```
 
-Sono due oggetti separati perché il `writeBackConfig` vale per tutto il CR: con un'unica regola, entrambi gli ambienti scriverebbero nello stesso file di values.
+Nella versione 1.0.0 c'era anche `imageupdater-prod.yaml`, che scriveva il tag in `values-prod.yaml` su `main`. È stata tolta con il branch `dev`: altrimenti ogni immagine costruita da `dev` arriverebbe su `main` senza passare dalla PR.
 
 ## Permessi per l'utenza normale
 
@@ -443,7 +446,7 @@ Il login si fa con **"Log in via OpenShift"**.
 
 ### Nuova versione del codice in dev
 
-Nessuna operazione manuale: un push su `main` che modifica `joursense/` avvia la pipeline; l'Image Updater rileva la nuova immagine e aggiorna `values-dev.yaml`; Argo CD aggiorna dev.
+Nessuna operazione manuale: un push sul branch `dev` che modifica `joursense/` avvia la pipeline; l'Image Updater rileva la nuova immagine e aggiorna `values-dev.yaml` sul branch `dev`; Argo CD aggiorna dev.
 
 Per verificare l'immagine in uso:
 
@@ -453,11 +456,13 @@ oc get deploy joursense -n joursense-dev \
 ```
 ### Promozione in prod
 
-Il tag non va più copiato a mano: l'Image Updater lo scrive in `values-prod.yaml` insieme a quello di dev.
+Il tag di prod si scrive a mano: così si sceglie esattamente quale immagine, già provata in dev, va in produzione.
 
 1. Dopo una nuova immagine, verificare che dev funzioni con la nuova versione.
-2. Prod risulta **OutOfSync**: in console, **App Diff** mostra che cambia solo il tag dell'immagine. Se lo stato non è ancora aggiornato, usare **REFRESH**.
-3. **SYNC → SYNCHRONIZE** per portare la nuova versione in prod.
+2. Sul branch `dev`, dopo `git pull`, copiare in `values-prod.yaml` il tag di `values-dev.yaml`; commit e push.
+3. Su GitHub aprire la PR `dev` → `main` e fare il merge.
+4. Prod risulta **OutOfSync**: in console, **App Diff** mostra cosa cambia. Se lo stato non è ancora aggiornato, usare **REFRESH**.
+5. **SYNC → SYNCHRONIZE** per portare la nuova versione in prod.
 
 Per verificare che dev e prod usino la stessa immagine:
 
@@ -472,7 +477,7 @@ oc get deploy joursense -n joursense-prod \
 
 ### Modifica di configurazione (values o template)
 
-Commit e push della modifica. Dev la applica da solo entro circa 3 minuti (oppure subito con **REFRESH** in console); prod resta OutOfSync fino al Sync manuale.
+Commit e push della modifica sul branch `dev`. Dev la applica da solo entro circa 3 minuti (oppure subito con **REFRESH** in console); prod la riceve con la PR `dev` → `main` e resta OutOfSync fino al Sync manuale.
 
 ### Tornare a una versione precedente
 
@@ -483,7 +488,6 @@ Con GitOps si torna indietro **in Git**, non sul cluster: si annulla il commit c
 ```bash
 # stato sintetico
 oc get imageupdater joursense-dev -n openshift-gitops -o yaml | sed -n '/^status:/,$p'
-oc get imageupdater joursense-prod -n openshift-gitops -o yaml | sed -n '/^status:/,$p'
 
 # ultimi eventi del controller, in forma leggibile
 oc logs -n openshift-gitops deploy/openshift-gitops-argocd-image-updater-controller --since=10m \

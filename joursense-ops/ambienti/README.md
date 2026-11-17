@@ -20,10 +20,10 @@ il resto (probe, Postgres, Route, NetworkPolicy…) è comune. Non esistono copi
 Application di Argo CD puntano alla stessa cartella e cambiano solo il file di values e il
 namespace.
 
-| Application | Chart | Values | Namespace | Sync |
-|---|---|---|---|---|
-| `joursense-dev` | `joursense-helm` | `values-dev.yaml` | `joursense-dev` | automatica |
-| `joursense-prod` | `joursense-helm` | `values-prod.yaml` | `joursense-prod` | manuale |
+| Application | Branch | Chart | Values | Namespace | Sync |
+|---|---|---|---|---|---|
+| `joursense-dev` | `dev` | `joursense-helm` | `values-dev.yaml` | `joursense-dev` | automatica |
+| `joursense-prod` | `main` | `joursense-helm` | `values-prod.yaml` | `joursense-prod` | manuale |
 
 ```bash
 oc get applications -n openshift-gitops \
@@ -42,7 +42,8 @@ Entrambe mostrano `PATH joursense-helm`: stesso chart, values diversi.
 | Backup (CronJob + PVC) | attivo, 2Gi, 4 giorni | **assente** | attivo, **4Gi, 7 giorni** |
 | Alert (PrometheusRule) | attivo | **assente** | attivo |
 | Immagine dell'app | namespace del rilascio | da `joursense-helm` | da `joursense-helm` |
-| Tag dell'immagine | `latest` | scritto dall'**Image Updater** | scritto dall'**Image Updater**, applicato con il **Sync** manuale |
+| Tag dell'immagine | `latest` | scritto dall'**Image Updater** (branch `dev`) | scritto nella PR `dev` → `main`, applicato con il **Sync** manuale |
+| Nome nella testata (`app.ambiente`) | solo "Joursense" | **Joursense-dev** | **Joursense-prod** |
 | Secret del database | creato dal chart | **creato a parte** | **creato a parte** |
 
 Motivazioni:

@@ -193,12 +193,11 @@ oc create secret generic git-creds-joursense -n openshift-gitops \
 > Il token ha una scadenza: quando scade, l'Image Updater non riesce più a fare commit e dev
 > smette di aggiornarsi. Va rigenerato e il Secret va ricreato.
 
-Regole dell'Image Updater, una per ambiente:
+Regola dell'Image Updater, solo per dev (scrive sul branch `dev`; prod si aggiorna con il merge su `main`):
 
 ```bash
 oc apply -f joursense-ops/argocd/imageupdater-dev.yaml
-oc apply -f joursense-ops/argocd/imageupdater-prod.yaml
-oc get imageupdater -n openshift-gitops                            # joursense-dev, joursense-prod
+oc get imageupdater -n openshift-gitops                            # joursense-dev
 ```
 
 ---
@@ -303,13 +302,12 @@ helm template joursense ./joursense-helm -n joursense-prod -f joursense-helm/val
 
 → [`joursense-ops/argocd/`](joursense-ops/argocd/README.md)
 
-L'Image Updater scrive il tag dell'immagine costruita al passo B4 sia in `values-dev.yaml` sia
-in `values-prod.yaml`, con un commit su GitHub. Cambia solo chi lo applica al cluster:
+Dev segue il branch `dev`, prod il branch `main`:
 
-| | Tag in Git | Applicazione al cluster |
-|---|---|---|
-| dev | Image Updater (automatico) | Argo CD, automatica |
-| prod | Image Updater (automatico) | Argo CD, solo dopo il **Sync** manuale |
+| | Branch | Tag in Git | Applicazione al cluster |
+|---|---|---|---|
+| dev | `dev` | Image Updater (automatico, commit su `dev`) | Argo CD, automatica |
+| prod | `main` | scritto a mano in `values-prod.yaml`, arriva con la PR `dev` → `main` | Argo CD, solo dopo il **Sync** manuale |
 
 **Dev**:
 
@@ -325,10 +323,11 @@ oc apply -f joursense-ops/argocd/application-prod.yaml
 oc get applications -n openshift-gitops                            # joursense-prod OutOfSync
 ```
 
-1. Attendere il commit dell'Image Updater su `values-prod.yaml` (`git pull`, poi
-   `git log -1 -- joursense-helm/values-prod.yaml`).
-2. Nella console di Argo CD controllare le differenze con **App Diff**.
-3. **SYNC → SYNCHRONIZE**.
+1. Sul branch `dev`, dopo `git pull`, copiare in `values-prod.yaml` il tag che si trova in
+   `values-dev.yaml`; commit e push.
+2. Su GitHub aprire la PR `dev` → `main` e fare il merge.
+3. Nella console di Argo CD (eventualmente dopo **REFRESH**) controllare le differenze con **App Diff**.
+4. **SYNC → SYNCHRONIZE**.
 
 Console di Argo CD: *console OpenShift → menu applicazioni → Cluster Argo CD*, login con
 **LOG IN VIA OPENSHIFT**.
@@ -365,9 +364,10 @@ oc logs job/backup-prova -n joursense-prod                         # ... Backup 
 oc delete job backup-prova -n joursense-prod
 ```
 
-Flusso CI/CD completo: un push su `main` che modifica `joursense/` deve creare **una sola**
-PipelineRun, poi i commit dell'Image Updater su `values-dev.yaml` e `values-prod.yaml`,
-l'aggiornamento automatico di dev e prod in **OutOfSync** fino al Sync.
+Flusso CI/CD completo: un push su `dev` che modifica `joursense/` deve creare **una sola**
+PipelineRun, poi il commit dell'Image Updater su `values-dev.yaml` (branch `dev`) e
+l'aggiornamento automatico di dev; prod resta **Synced** sulla versione precedente. Dopo la PR
+`dev` → `main` con il nuovo tag in `values-prod.yaml`, prod va in **OutOfSync** fino al Sync.
 
 ---
 
@@ -375,9 +375,10 @@ l'aggiornamento automatico di dev e prod in **OutOfSync** fino al Sync.
 
 | Operazione | Come |
 |---|---|
-| Nuova versione in dev | push su `main` in `joursense/`: automatico |
-| Nuova versione in prod | il tag in `values-prod.yaml` lo scrive l'Image Updater; si controlla con **App Diff** e si applica con **Sync** |
-| Modifica di configurazione | modifica di values o template, push; dev si aggiorna da solo, prod con **Sync** |
-| Rollback | `git revert <commit>` e push; in prod poi **Sync**. Attenzione: l'Image Updater riporta il tag all'immagine più recente al controllo successivo, quindi per un rollback dell'immagine va prima sospesa la sua regola (`oc delete imageupdater joursense-prod -n openshift-gitops`, da riapplicare dopo) |
+| Nuova versione in dev | push su `dev` in `joursense/`: automatico |
+| Nuova versione in prod | sul branch `dev` si copia in `values-prod.yaml` il tag di `values-dev.yaml`, PR `dev` → `main`, merge; si controlla con **App Diff** e si applica con **Sync** |
+| Modifica di configurazione | modifica di values o template sul branch `dev`, push; dev si aggiorna da solo, prod dopo la PR su `main` e il **Sync** |
+| Rollback in prod | in `values-prod.yaml` si rimette il tag precedente (o `git revert <commit>`), PR `dev` → `main`, poi **Sync** |
 
-L'Image Updater fa commit su `main`: prima di lavorare in locale fare sempre `git pull`.
+Si lavora sempre sul branch `dev`: su `main` le modifiche arrivano solo con una PR.
+L'Image Updater fa commit su `dev`: prima di lavorare in locale fare sempre `git pull`.
