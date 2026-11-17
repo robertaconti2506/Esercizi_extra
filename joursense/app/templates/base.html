@@ -10,7 +10,7 @@
 <body>
   <header class="testata">
     <div class="contenitore testata-riga">
-      <a class="logo" href="/">Joursense-prod</a>
+      <a class="logo" href="/">Joursense{% if ambiente %}-{{ ambiente }}{% endif %}</a>
       {% if utente %}
       <nav>
         <a href="/">Notizie</a>

@@ -23,6 +23,7 @@ templates = Jinja2Templates(directory=BASE / "templates")
 
 # Nome del pod che risponde, mostrato nel pie' di pagina
 templates.env.globals["pod"] = socket.gethostname()
+templates.env.globals["ambiente"] = os.getenv("AMBIENTE", "")
 
 # "Versione" del CSS: un'impronta del contenuto del file. Il template la aggiunge
 # all'indirizzo (style.css?v=...), cosi' quando il CSS cambia cambia anche l'indirizzo

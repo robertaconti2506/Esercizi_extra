@@ -6,9 +6,10 @@
 # ma la nuova versione arriva sul cluster solo dopo il Sync.
 
 app:
+  ambiente: prod
   image:
     namespace: joursense-helm # l'immagine viene costruita solo li'
-    tag: eaf78dbf54ed744167a0f239b17d37888ec522b6
+    tag: deca4e567b87651dafe246f28930a9e15bbc236f
   resources: # il doppio delle risorse di values.yaml
     limits:
       cpu: "1"

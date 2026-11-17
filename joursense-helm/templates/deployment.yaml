@@ -53,6 +53,8 @@ spec:
               name: joursense-admin
               key: ADMIN_EMAILS
               optional: true
+        - name: AMBIENTE
+          value: {{ .Values.app.ambiente | default "" | quote }}
         ports:
         - containerPort: {{ .Values.app.port }}
           protocol: TCP
