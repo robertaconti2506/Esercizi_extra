@@ -5,6 +5,7 @@
 # con sincronizzazione automatica, app.image.tag viene aggiornato dall'Image Updater.
 
 app:
+  ambiente: dev
   image:
     namespace: joursense-helm # l'immagine viene costruita solo li'
     tag: eaf78dbf54ed744167a0f239b17d37888ec522b6
