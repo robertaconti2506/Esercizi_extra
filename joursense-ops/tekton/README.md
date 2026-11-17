@@ -1,6 +1,6 @@
 # Pipeline CI di joursense (OpenShift Pipelines / Tekton)
 
-A ogni push su `main` che modifica il codice dell'app, una pipeline Tekton scarica il
+A ogni push sul branch `dev` che modifica il codice dell'app, una pipeline Tekton scarica il
 codice, esegue i test e costruisce l'immagine. Il **deploy** non è compito della pipeline: dalla
 fase 3 lo gestisce Argo CD (vedi [`../argocd/README.md`](../argocd/README.md)).
 
@@ -65,9 +65,9 @@ repo. La Task `run-tests` è nostra, nel namespace `joursense-helm`.
 La pipeline si ferma all'immagine nel registry. Da lì:
 
 1. l'**Argo CD Image Updater** vede il nuovo tag e lo scrive in `joursense-helm/values-dev.yaml`
-   con un commit su GitHub;
+   con un commit sul branch `dev`;
 2. **Argo CD** aggiorna `joursense-dev` (sync automatica); `joursense-prod` si aggiorna solo con
-   una promozione manuale.
+   una promozione manuale (PR `dev` → `main` e Sync).
 
 Nella prima versione c'era un quarto passo, `deploy`, con `helm upgrade`. È stato tolto per non
 avere due strumenti (Helm dalla pipeline e Argo CD) che modificano le stesse risorse. Il passo
@@ -229,20 +229,20 @@ predefiniti di Tekton Triggers (`tekton-triggers-eventlistener-roles` e
 GitHub non può raggiungere direttamente il cluster (rete aziendale), quindi l'evento passa
 da **smee.io**, un servizio che inoltra i webhook. Con i numeri del diagramma in cima:
 
-1. lo sviluppatore fa `git push` su `main`;
+1. lo sviluppatore fa `git push` sul branch `dev`;
 2. GitHub invia il webhook (evento `push`, JSON, firmato con il segreto) al canale smee.io;
 3. il pod `smee-client` è collegato al canale con una connessione **in uscita** sulla 443: è
    il cluster che si collega a smee.io, non il contrario, quindi non serve esporre niente;
 4. `smee-client` inoltra l'evento con una POST al Service `el-github-listener:8080`;
 5. l'interceptor `github` verifica la firma e che sia un `push`;
-6. l'interceptor `cel` controlla che il branch sia `main` e che il push modifichi `joursense/`;
+6. l'interceptor `cel` controlla che il branch sia `dev` e che il push modifichi `joursense/`;
 7. il TriggerBinding estrae URL della repo e SHA del commit;
 8. il TriggerTemplate crea la PipelineRun;
 9. `build-push` pubblica l'immagine sul registry interno.
 
 Da qui proseguono, con i numeri da 10 a 14 del diagramma: l'Image Updater vede il nuovo tag (10)
-e lo scrive in `values-dev.yaml` con un commit su GitHub (11); Argo CD legge la repo (12) e
-aggiorna dev da solo (13), prod solo con un Sync manuale (14). Dettagli in
+e lo scrive in `values-dev.yaml` con un commit sul branch `dev` (11); Argo CD legge la repo (12) e
+aggiorna dev da solo (13), prod solo dopo la PR `dev` → `main` e un Sync manuale (14). Dettagli in
 [`../argocd/README.md`](../argocd/README.md).
 
 ### EventListener `github-listener`
@@ -252,13 +252,13 @@ Due interceptor, in ordine:
 | Interceptor | Cosa fa |
 |---|---|
 | `github` | verifica la firma con il segreto condiviso (`github-webhook-secret`) e accetta solo eventi `push` |
-| `cel` | lascia passare solo i push su `main` che aggiungono, modificano o rimuovono file in `joursense/` |
+| `cel` | lascia passare solo i push su `dev` che aggiungono, modificano o rimuovono file in `joursense/` |
 
 Il filtro `cel`:
 
 ```yaml
 value: >-
-  body.ref == 'refs/heads/main' &&
+  body.ref == 'refs/heads/dev' &&
   body.commits.exists(c,
     c.added.exists(f, f.startsWith('joursense/')) ||
     c.modified.exists(f, f.startsWith('joursense/')) ||
@@ -320,7 +320,7 @@ oc get pods -n joursense-helm | grep -E "el-github-listener|smee-client"   # Run
 oc logs deploy/smee-client -n joursense-helm --tail=5       # eventi inoltrati
 ```
 
-Dopo un push su `main` che modifica `joursense/`:
+Dopo un push su `dev` che modifica `joursense/`:
 
 ```bash
 oc get pipelinerun -n joursense-helm --sort-by=.metadata.creationTimestamp | tail -3
@@ -334,7 +334,7 @@ nuova PipelineRun.
 
 ## Lancio manuale
 
-Per provare la pipeline su un altro branch, senza push su `main`:
+Per provare la pipeline su un altro branch, senza push su `dev`:
 
 ```bash
 cat <<EOF | oc create -n joursense-helm -f -

@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.1.0 – 17 novembre 2026
+
+### Modifiche
+
+- **Branch `dev` per l'ambiente di sviluppo**: l'Application `joursense-dev` segue il branch
+  `dev`, `joursense-prod` resta su `main`. La promozione in prod è una PR `dev` → `main`.
+- La pipeline parte dai push su `dev` che modificano `joursense/` (filtro CEL
+  dell'EventListener); il merge su `main` non ricostruisce l'immagine: prod usa la stessa
+  immagine già provata in dev.
+- L'Image Updater lavora solo per dev e fa commit sul branch `dev` (`gitConfig.branch: dev`).
+  Rimossa la regola `imageupdater-prod.yaml`: il tag di prod si scrive in `values-prod.yaml`
+  nella PR di promozione.
+- Nome dell'ambiente nella testata dell'app (Joursense-dev / Joursense-prod), dal valore
+  `app.ambiente` dei values tramite la variabile `AMBIENTE`.
+
 ## v1.0.0 – 12 novembre 2026
 
 Prima release di produzione di **Joursense su OpenShift**: tutte le attività dell'esercitazione
