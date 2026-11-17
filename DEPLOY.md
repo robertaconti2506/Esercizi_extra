@@ -1,4 +1,4 @@
-# Istruzioni di deploy – Joursense v1.0.0
+# Istruzioni di deploy – Joursense v1.1.0
 
 Questa guida installa Joursense **da zero** su un cluster OpenShift: CI con Tekton, deploy
 GitOps con Argo CD, ambienti `joursense-dev` e `joursense-prod`.
@@ -11,7 +11,7 @@ indicati in ogni passo. Qui ci sono solo i comandi e le verifiche.
 
 | Componente | Versione |
 |---|---|
-| Chart Helm `joursense-helm` | `1.0.0` |
+| Chart Helm `joursense-helm` | `1.1.0` |
 | OpenShift Pipelines (Tekton) | canale `pipelines-1.24` |
 | OpenShift GitOps (Argo CD + Image Updater) | canale `gitops-1.22` |
 | Immagine dell'app | tag = SHA del commit, costruita dalla pipeline |
@@ -27,7 +27,7 @@ indicati in ogni passo. Qui ci sono solo i comandi e le verifiche.
   ```bash
   git clone https://github.com/robertaconti2506/Esercizi_extra.git
   cd Esercizi_extra
-  git checkout v1.0.0
+  git checkout v1.1.0
   ```
 
 **Tutti i comandi vanno lanciati dalla root della repo.**
@@ -274,7 +274,7 @@ spec:
     - name: git-url
       value: https://github.com/robertaconti2506/Esercizi_extra.git
     - name: git-revision
-      value: v1.0.0
+      value: v1.1.0
     - name: image
       value: image-registry.openshift-image-registry.svc:5000/joursense-helm/joursense
   workspaces:
