@@ -9,7 +9,7 @@ metadata:
   namespace: openshift-gitops              # stesso namespace delle Application
 spec:
   applicationRefs:
-    - namePattern: "joursense-dev"         # solo dev, prod resta manuale
+    - namePattern: "joursense-dev"         # solo dev: prod si aggiorna col merge su main
       images:
         - alias: joursense
           imageName: image-registry.openshift-image-registry.svc:5000/joursense-helm/joursense
@@ -23,4 +23,5 @@ spec:
   writeBackConfig:
     method: git:secret:openshift-gitops/git-creds-joursense
     gitConfig:
+      branch: dev
       writeBackTarget: "helmvalues:/joursense-helm/values-dev.yaml"

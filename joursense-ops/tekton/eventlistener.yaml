@@ -22,7 +22,7 @@ spec:
           params:
             - name: filter
               value: >-
-                body.ref == 'refs/heads/main' &&
+                body.ref == 'refs/heads/dev' &&
                 body.commits.exists(c,
                   c.added.exists(f, f.startsWith('joursense/')) ||
                   c.modified.exists(f, f.startsWith('joursense/')) ||
